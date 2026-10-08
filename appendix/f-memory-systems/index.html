@@ -1,0 +1,1924 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Capra, a compiler for an open-source LLM-inference accelerator, built from scratch - a systolic array in Verilog, int8 quantization, KV cache and batching, a Yosys synthesis flow, and the compiler that targets the chip. Open-source tools only.">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../e-transformers/">
+      
+      
+        <link rel="next" href="../g-eda-flow/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/capra-favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>F. Memory Systems and DRAM - Capra: Silicon Compiler from Scratch -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#appendix-f-memory-systems-and-dram" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Capra: Silicon Compiler from Scratch -- Under Development" class="md-header__button md-logo" aria-label="Capra: Silicon Compiler from Scratch -- Under Development" data-md-component="logo">
+      
+  <img src="../../assets/capra-logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Capra: Silicon Compiler from Scratch -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              F. Memory Systems and DRAM
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Capra: Silicon Compiler from Scratch -- Under Development" class="md-nav__button md-logo" aria-label="Capra: Silicon Compiler from Scratch -- Under Development" data-md-component="logo">
+      
+  <img src="../../assets/capra-logo.svg" alt="logo">
+
+    </a>
+    Capra: Silicon Compiler from Scratch -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction (the book at a glance)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../background/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background (Verilog and the tools)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Foundations: Numbers, Circuits, and the Test Loop
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Foundations: Numbers, Circuits, and the Test Loop
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/01-the-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. The Flow: One Circuit Through Four Tools, and a Way to Test the Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part02/02-mac-and-number-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part03/03-quantization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- The Compute Engine: Arrays, Memory and Vectors
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- The Compute Engine: Arrays, Memory and Vectors
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part04/04-systolic-array/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. The Systolic Array: N x N Multiplies Per Cycle, and the Schedule That Makes It Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part05/05-scratchpad-dma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. The Scratchpad, the DMA Engine, and Double Buffering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part06/06-vector-unit-softmax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. The Vector Unit: A Lookup-Table Exponential, a Divider, and Fixed-Point Softmax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- The Whole Chip: Instructions, Attention and Throughput
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- The Whole Chip: Instructions, Attention and Throughput
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part07/07-the-whole-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. GA-2: An Instruction Set, a Sequencer, and the Whole Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part08/08-attention-kv-cache/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Attention and the KV Cache: One Decode Step, From Hidden State to Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part09/09-batching-and-bandwidth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- From Verilog to Gates: Synthesis and Verification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- From Verilog to Gates: Synthesis and Verification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part10/10-synthesis-and-gate-level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. Synthesis, Timing and Gate-Level Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Compilation: Capra and the Capstone
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Compilation: Capra and the Capstone
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part11/11-the-compiler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. Capra, the Compiler: From a Tensor Graph to GA-2 Instructions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part12/12-capstone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Capstone: A Tiny Transformer Decodes on the Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 6 -- Case Studies
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 6 -- Case Studies
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part13/13-int4-weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. int4 Weight-Only Quantization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part14/14-grouped-query-attention/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Grouped-Query Attention
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part15/15-paged-cache-and-window/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. A Paged KV Cache and Sliding-Window Attention
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part16/16-speculative-decoding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Speculative Decoding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part17/17-mixture-of-experts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Mixture-of-Experts Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendices
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Appendices
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../a-digital-logic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A. Digital Logic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../b-verilog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B. Verilog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../c-number-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    C. Number Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../d-linear-algebra/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    D. Linear Algebra for ML
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../e-transformers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E. Transformers and LLM Inference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    F. Memory Systems and DRAM
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    F. Memory Systems and DRAM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-dram-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How DRAM works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#three-access-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three access patterns
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-books-chips-assume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the book's chips assume
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bandwidth-sets-the-speed-of-decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bandwidth sets the speed of decode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../g-eda-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G. The EDA Flow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../answers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Answers to the Self-Check Questions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-dram-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How DRAM works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#three-access-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three access patterns
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-books-chips-assume" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the book's chips assume
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bandwidth-sets-the-speed-of-decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bandwidth sets the speed of decode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="appendix-f-memory-systems-and-dram">Appendix F. Memory Systems and DRAM<a class="headerlink" href="#appendix-f-memory-systems-and-dram" title="Permanent link">&para;</a></h1>
+<p><img alt="appx-f" src="../../assets/art/appx-f.svg" /></p>
+<details class="info">
+<summary>About the animals in this picture and where they are standing</summary>
+<ul>
+<li><strong>Walia ibex</strong> (<em>Capra walie</em>) lives nowhere but the Simien Mountains of northern Ethiopia, on high cliffs. It is endangered, with only a few hundred animals remaining, and is protected within the Simien Mountains National Park.</li>
+<li><strong>Siberian ibex</strong> (<em>Capra sibirica</em>) lives in the high mountains of Central Asia, from the Altai and Tian Shan to the Himalaya. It is one of the largest ibexes, and the males' ridged horns can exceed a metre in length.</li>
+<li><strong>Domestic goat</strong> (<em>Capra hircus</em>) descends from the bezoar ibex and is among the oldest domesticated animals. There are on the order of a billion of them, kept for milk, meat, fibre and as pack animals.</li>
+<li><strong>Iberian ibex</strong> (<em>Capra pyrenaica</em>) lives in the mountains of Spain and Portugal. Its Pyrenean subspecies, the bucardo, died out in 2000. In 2003 scientists cloned one; the kid lived only minutes, making it the first extinct animal to be cloned.</li>
+</ul>
+<p>The scene is imaginary: it is set on Enceladus, a small icy moon of Saturn whose south pole sprays water-ice geysers; Saturn and its rings loom overhead. The animals are stylised drawings, shown where they could not live, for effect.</p>
+</details>
+<p><strong>Who this is for:</strong> readers of Chapters 5 and 9 who want to know where the memory numbers come from, and why the book's chips assume a simple fixed-latency memory. The DRAM model here is a <em>toy</em> with <strong>assumed</strong> DDR-class timings; it shows the shapes of the effects (what a row hit is, why random access is slow, why parallelism helps), not the numbers of any real part. <code>tools/appx_f.py</code> runs it.</p>
+<h2 id="the-hierarchy">The hierarchy<a class="headerlink" href="#the-hierarchy" title="Permanent link">&para;</a></h2>
+<p>Memory is a compromise between size, speed and cost, so computers use several kinds in layers:</p>
+<p><img alt="a pyramid: registers, on-chip SRAM, DRAM, flash, with sizes and latencies" src="../../assets/fig/appx-f-hier.svg" />
+<em>Figure F.1: smaller and closer is faster. Orders of magnitude only; they vary with process and design.</em></p>
+<ul>
+<li><strong>Registers and flip-flops</strong> hold a few bytes and are available in the same cycle.</li>
+<li><strong>SRAM</strong> (static RAM: six transistors per bit) is fast and sits on the same die as the logic; megabytes to a hundred megabytes. The <strong>scratchpad</strong> of Chapter 5 is SRAM. It has one cycle of read latency, and (in this book's chips) one write port.</li>
+<li><strong>DRAM</strong> (dynamic RAM: one transistor and a capacitor per bit) is dense and cheap but slow, and must be periodically <strong>refreshed</strong>; gigabytes. It lives in separate chips (DDR, GDDR) or in stacks next to the processor (<strong>HBM</strong>).</li>
+<li><strong>Flash</strong> holds terabytes and takes about a hundred microseconds to read.</li>
+</ul>
+<p>An accelerator keeps what it is working on in SRAM and <strong>streams</strong> the rest from DRAM. The chip of Chapter 7 does it with explicit <code>LD</code> and <code>ST</code> instructions and a DMA engine (Chapter 5): the programmer, not a cache, moves the data.</p>
+<h2 id="how-dram-works">How DRAM works<a class="headerlink" href="#how-dram-works" title="Permanent link">&para;</a></h2>
+<p>A DRAM chip is a set of <strong>banks</strong>; each bank is a grid of cells read a whole <strong>row</strong> at a time into a <strong>row buffer</strong>. To read a byte:</p>
+<ul>
+<li>if the right row is already in the row buffer, a <strong>row hit</strong>: just the <em>column access</em> (time <code>tCL</code>);</li>
+<li>if the bank is idle, an <strong>activate</strong> loads the row (<code>tRCD</code>) and then the column access;</li>
+<li>if a <em>different</em> row is open, a <strong>precharge</strong> closes it (<code>tRP</code>), then activate, then column access: a <strong>row miss</strong>, the slowest case.</li>
+</ul>
+<p>With the assumed timings of the script (14 ns each) that is 14, 28 and 42 ns to the first data. Data then moves in <strong>bursts</strong> over the bus (64 bytes in 2.5 ns for a 25.6 GB/s channel). Several banks can work at once, overlapping each other's latencies.</p>
+<h2 id="three-access-patterns">Three access patterns<a class="headerlink" href="#three-access-patterns" title="Permanent link">&para;</a></h2>
+<p>The script drives the same toy DRAM with three patterns of 4,000 requests:</p>
+<p><img alt="delivered bandwidth of the toy DRAM with 8 requests in flight: sequential 25.3, strided 15.1, random 7.6 GB/s" src="../../assets/fig/appx-f-bw.svg" />
+<em>Figure F.2: the same memory, three patterns. Sequential access reaches nearly the channel's peak of 25.6 GB/s; a stride that keeps landing in one bank gets 60% of it; random access, almost every request a row miss, gets 30%.</em></p>
+<ul>
+<li><strong>Sequential</strong> (streaming a weight matrix, as decode does): 99% row hits; with one request at a time the 14 ns of latency dominates (3.8 GB/s), but with eight in flight the latencies overlap and the channel is nearly full (25.3 GB/s). <em>Bandwidth needs parallelism: a memory system must be asked for several things at once.</em></li>
+<li><strong>Strided by 4 KiB:</strong> every access lands in the same bank (the bank number is the line number mod 8, and 4 KiB is exactly 64 lines), so the banks cannot overlap each other even though the rows hit.</li>
+<li><strong>Random:</strong> every request pays a row miss; the throughput is limited by activates.</li>
+</ul>
+<p><strong>Open-page against closed-page</strong> policy (keep the row open after an access, or precharge at once): in this toy model, open page wins for both patterns, by a factor of two on the stream. Real controllers choose per workload or adaptively. <strong>Banks</strong> matter less here than parallelism: one to sixteen banks differ by only 8% on a stream with rows that hit.</p>
+<h2 id="what-the-books-chips-assume">What the book's chips assume<a class="headerlink" href="#what-the-books-chips-assume" title="Permanent link">&para;</a></h2>
+<p>Chapter 5's DMA has a <strong>fixed latency</strong> (8 cycles) and moves one word per cycle: this models a streaming read with row hits and enough parallelism, <em>not</em> an arbitrary DRAM. So the book's cycle counts are exact for the SRAM scratchpad and <strong>optimistic for DRAM</strong>: a real system would see the pattern-dependent numbers above. For the <em>shape</em> of Chapter 9's roofline this does not matter, because decode streams its weights sequentially, which is the good case. It matters for gathers (embedding lookups, paged caches, Chapter 15) and for any scheme that fetches small pieces.</p>
+<h2 id="bandwidth-sets-the-speed-of-decode">Bandwidth sets the speed of decode<a class="headerlink" href="#bandwidth-sets-the-speed-of-decode" title="Permanent link">&para;</a></h2>
+<p>Decode reads every weight once per token, so the speed ceiling is <code>bandwidth / bytes of weights</code>, derived in the last table of the script: a 7B-class model at int8 (7 GB) reaches 7 tokens per second on 50 GB/s (a laptop-class memory), 29 on 200 GB/s, 143 on 1 TB/s (a datacenter accelerator's HBM). Halving the bytes (int4) doubles the ceiling, and nothing about the arithmetic changes. This is the whole logic of Part 6.</p>
+<h2 id="running-the-examples">Running the examples<a class="headerlink" href="#running-the-examples" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="sd">&quot;&quot;&quot;Appendix F (memory systems and DRAM): a toy DRAM bank model and the arithmetic of bandwidth. All DRAM numbers are ASSUMED, typical of DDR4-class parts, to make the shapes of the effects visible; nothing here is a measurement of a real device. Usage: appx_f.py&quot;&quot;&quot;</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">import</span> <span class="nn">random</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">R</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">tRCD</span><span class="p">,</span> <span class="n">tCL</span><span class="p">,</span> <span class="n">tRP</span><span class="p">,</span> <span class="n">tBURST</span> <span class="o">=</span> <span class="mf">14.0</span><span class="p">,</span> <span class="mf">14.0</span><span class="p">,</span> <span class="mf">14.0</span><span class="p">,</span> <span class="mf">2.5</span>          <span class="c1"># ns: row to column delay (activate), column access (read latency), precharge (close a row), time on the bus for one 64-byte burst</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">ROW</span> <span class="o">=</span> <span class="mi">8192</span><span class="p">;</span> <span class="n">LINE</span> <span class="o">=</span> <span class="mi">64</span><span class="p">;</span> <span class="n">BANKS</span> <span class="o">=</span> <span class="mi">8</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;== 1. what a DRAM access costs: it depends on whether the row is already open (assumed timings in ns)&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  row hit  (the row is open):              column access </span><span class="si">{</span><span class="n">tCL</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">tCL</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> ns to the first data&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  row empty (the bank is idle):            activate </span><span class="si">{</span><span class="n">tRCD</span><span class="si">}</span><span class="s2"> + column access </span><span class="si">{</span><span class="n">tCL</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">tRCD</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">tCL</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> ns&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  row miss (another row is open):          precharge </span><span class="si">{</span><span class="n">tRP</span><span class="si">}</span><span class="s2"> + activate </span><span class="si">{</span><span class="n">tRCD</span><span class="si">}</span><span class="s2"> + column access </span><span class="si">{</span><span class="n">tCL</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">tRP</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">tRCD</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">tCL</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> ns&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  one burst of </span><span class="si">{</span><span class="n">LINE</span><span class="si">}</span><span class="s2"> bytes then occupies the bus for </span><span class="si">{</span><span class="n">tBURST</span><span class="si">}</span><span class="s2"> ns: the peak bandwidth of one channel is </span><span class="si">{</span><span class="n">LINE</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">tBURST</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> GB/s&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="k">class</span> <span class="nc">Dram</span><span class="p">:</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">banks</span><span class="o">=</span><span class="n">BANKS</span><span class="p">,</span> <span class="n">policy</span><span class="o">=</span><span class="s2">&quot;open&quot;</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">open</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">banks</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">free</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="n">banks</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">bus</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">policy</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">hits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">misses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">empties</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">banks</span> <span class="o">=</span> <span class="n">banks</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="k">def</span> <span class="nf">access</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        <span class="n">line</span> <span class="o">=</span> <span class="n">addr</span> <span class="o">//</span> <span class="n">LINE</span><span class="p">;</span> <span class="n">bank</span> <span class="o">=</span> <span class="p">(</span><span class="n">line</span> <span class="o">//</span> <span class="p">(</span><span class="n">ROW</span> <span class="o">//</span> <span class="n">LINE</span><span class="p">))</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">banks</span> <span class="k">if</span> <span class="kc">False</span> <span class="k">else</span> <span class="n">line</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">banks</span><span class="p">;</span> <span class="n">row</span> <span class="o">=</span> <span class="n">addr</span> <span class="o">//</span> <span class="p">(</span><span class="n">ROW</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">banks</span><span class="p">);</span> <span class="n">start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">free</span><span class="p">[</span><span class="n">bank</span><span class="p">])</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">[</span><span class="n">bank</span><span class="p">]</span> <span class="o">==</span> <span class="n">row</span><span class="p">:</span> <span class="n">lat</span> <span class="o">=</span> <span class="n">tCL</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">hits</span> <span class="o">+=</span> <span class="mi">1</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">[</span><span class="n">bank</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="n">lat</span> <span class="o">=</span> <span class="n">tRCD</span> <span class="o">+</span> <span class="n">tCL</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">empties</span> <span class="o">+=</span> <span class="mi">1</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        <span class="k">else</span><span class="p">:</span> <span class="n">lat</span> <span class="o">=</span> <span class="n">tRP</span> <span class="o">+</span> <span class="n">tRCD</span> <span class="o">+</span> <span class="n">tCL</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">misses</span> <span class="o">+=</span> <span class="mi">1</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">[</span><span class="n">bank</span><span class="p">]</span> <span class="o">=</span> <span class="n">row</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span> <span class="o">==</span> <span class="s2">&quot;open&quot;</span> <span class="k">else</span> <span class="kc">None</span><span class="p">;</span> <span class="n">data</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="n">lat</span><span class="p">;</span> <span class="n">busstart</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bus</span><span class="p">);</span> <span class="bp">self</span><span class="o">.</span><span class="n">bus</span> <span class="o">=</span> <span class="n">busstart</span> <span class="o">+</span> <span class="n">tBURST</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">free</span><span class="p">[</span><span class="n">bank</span><span class="p">]</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="p">(</span><span class="n">lat</span> <span class="o">-</span> <span class="n">tCL</span><span class="p">)</span> <span class="o">+</span> <span class="n">tBURST</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span> <span class="o">==</span> <span class="s2">&quot;open&quot;</span> <span class="k">else</span> <span class="n">start</span> <span class="o">+</span> <span class="n">lat</span> <span class="o">+</span> <span class="n">tRP</span><span class="p">;</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bus</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="n">addrs</span><span class="p">,</span> <span class="n">banks</span><span class="o">=</span><span class="n">BANKS</span><span class="p">,</span> <span class="n">policy</span><span class="o">=</span><span class="s2">&quot;open&quot;</span><span class="p">,</span> <span class="n">inflight</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">d</span> <span class="o">=</span> <span class="n">Dram</span><span class="p">(</span><span class="n">banks</span><span class="p">,</span> <span class="n">policy</span><span class="p">);</span> <span class="n">t</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span> <span class="n">lat</span> <span class="o">=</span> <span class="p">[];</span> <span class="n">done</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">addrs</span><span class="p">):</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        <span class="n">issue</span> <span class="o">=</span> <span class="n">done</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="n">inflight</span><span class="p">]</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="n">inflight</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">;</span> <span class="n">fin</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">issue</span><span class="p">);</span> <span class="n">done</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fin</span><span class="p">);</span> <span class="n">lat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fin</span> <span class="o">-</span> <span class="n">issue</span><span class="p">)</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    <span class="n">total</span> <span class="o">=</span> <span class="n">done</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">];</span> <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;gbps&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">addrs</span><span class="p">)</span> <span class="o">*</span> <span class="n">LINE</span> <span class="o">/</span> <span class="n">total</span><span class="p">,</span> <span class="s2">&quot;avg&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">lat</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span> <span class="s2">&quot;hits&quot;</span><span class="p">:</span> <span class="n">d</span><span class="o">.</span><span class="n">hits</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">addrs</span><span class="p">),</span> <span class="s2">&quot;total&quot;</span><span class="p">:</span> <span class="n">total</span><span class="p">}</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="n">N</span> <span class="o">=</span> <span class="mi">4000</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="n">seq</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="o">*</span> <span class="n">LINE</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">)];</span> <span class="n">stride</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="o">*</span> <span class="n">LINE</span> <span class="o">*</span> <span class="mi">64</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">)];</span> <span class="n">rnd</span> <span class="o">=</span> <span class="p">[</span><span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">30</span><span class="p">)</span> <span class="o">//</span> <span class="n">LINE</span> <span class="o">*</span> <span class="n">LINE</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">)]</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 2. access patterns on the same DRAM: sequential (streaming a weight matrix), strided (column access), random (a gather). 8 banks, open-page policy&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="s1">&#39;pattern&#39;</span><span class="si">:</span><span class="s2">28s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;one request at a time&#39;</span><span class="si">:</span><span class="s2">&gt;24s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;8 requests in flight&#39;</span><span class="si">:</span><span class="s2">&gt;24s</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="k">for</span> <span class="n">nm</span><span class="p">,</span> <span class="n">ad</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;sequential 64-byte lines&quot;</span><span class="p">,</span> <span class="n">seq</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;strided by 4 KiB&quot;</span><span class="p">,</span> <span class="n">stride</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;random lines&quot;</span><span class="p">,</span> <span class="n">rnd</span><span class="p">)):</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">run</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span> <span class="n">inflight</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">run</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span> <span class="n">inflight</span><span class="o">=</span><span class="mi">8</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">nm</span><span class="si">:</span><span class="s2">28s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">a</span><span class="p">[</span><span class="s1">&#39;gbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">7.2f</span><span class="si">}</span><span class="s2"> GB/s (</span><span class="si">{</span><span class="mi">100</span><span class="o">*</span><span class="n">a</span><span class="p">[</span><span class="s1">&#39;hits&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">3.0f</span><span class="si">}</span><span class="s2">% row hits) </span><span class="si">{</span><span class="n">b</span><span class="p">[</span><span class="s1">&#39;gbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">7.2f</span><span class="si">}</span><span class="s2"> GB/s (</span><span class="si">{</span><span class="mi">100</span><span class="o">*</span><span class="n">b</span><span class="p">[</span><span class="s1">&#39;hits&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">3.0f</span><span class="si">}</span><span class="s2">% row hits)&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  the strided pattern puts every access in the same bank (bank = line number mod 8, and 4 KiB is exactly 64 lines): the row hits are as good as the stream&#39;s but there is no bank parallelism, so the throughput is lower&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  peak of the channel: </span><span class="si">{</span><span class="n">LINE</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">tBURST</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> GB/s. Streaming reaches a large part of it only with several requests in flight (latency hidden by parallelism); random access cannot, because most requests pay an activate&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 3. open-page against closed-page policy (keep the row open after an access, or close it at once)&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="s1">&#39;pattern&#39;</span><span class="si">:</span><span class="s2">28s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;open page&#39;</span><span class="si">:</span><span class="s2">&gt;12s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;closed page&#39;</span><span class="si">:</span><span class="s2">&gt;12s</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="k">for</span> <span class="n">nm</span><span class="p">,</span> <span class="n">ad</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;sequential&quot;</span><span class="p">,</span> <span class="n">seq</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;random&quot;</span><span class="p">,</span> <span class="n">rnd</span><span class="p">)):</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">nm</span><span class="si">:</span><span class="s2">28s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">run</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span><span class="w"> </span><span class="n">inflight</span><span class="o">=</span><span class="mi">8</span><span class="p">)[</span><span class="s1">&#39;gbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">9.2f</span><span class="si">}</span><span class="s2"> GB/s </span><span class="si">{</span><span class="n">run</span><span class="p">(</span><span class="n">ad</span><span class="p">,</span><span class="w"> </span><span class="n">policy</span><span class="o">=</span><span class="s1">&#39;closed&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">inflight</span><span class="o">=</span><span class="mi">8</span><span class="p">)[</span><span class="s1">&#39;gbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">9.2f</span><span class="si">}</span><span class="s2"> GB/s&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  in this toy model open page wins for both patterns: for a stream by a factor of two (every access after the first is a row hit), for random access narrowly (a closed bank skips the precharge on the critical path but stays busy longer). Real controllers choose per workload or adaptively; the table shows only that the policy is a trade-off and that locality is what makes DRAM fast&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 4. how many banks does it take? (sequential stream, 8 requests in flight)&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">):</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">b</span><span class="si">:</span><span class="s2">2d</span><span class="si">}</span><span class="s2"> banks: </span><span class="si">{</span><span class="n">run</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span><span class="w"> </span><span class="n">banks</span><span class="o">=</span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">inflight</span><span class="o">=</span><span class="mi">8</span><span class="p">)[</span><span class="s1">&#39;gbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">6.2f</span><span class="si">}</span><span class="s2"> GB/s&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 5. memories are a hierarchy: smaller is faster (typical orders of magnitude, ASSUMED; they differ by process and design)&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="s1">&#39;level&#39;</span><span class="si">:</span><span class="s2">24s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;size&#39;</span><span class="si">:</span><span class="s2">&gt;12s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;latency&#39;</span><span class="si">:</span><span class="s2">&gt;12s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;bandwidth per unit&#39;</span><span class="si">:</span><span class="s2">&gt;20s</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;registers&quot;</span><span class="p">,</span> <span class="s2">&quot;~1 KB&quot;</span><span class="p">,</span> <span class="s2">&quot;0 (same cycle)&quot;</span><span class="p">,</span> <span class="s2">&quot;many TB/s&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;on-chip SRAM scratchpad&quot;</span><span class="p">,</span> <span class="s2">&quot;~1-100 MB&quot;</span><span class="p">,</span> <span class="s2">&quot;1-10 ns&quot;</span><span class="p">,</span> <span class="s2">&quot;TB/s (wide, close)&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;HBM / GDDR / DDR DRAM&quot;</span><span class="p">,</span> <span class="s2">&quot;~10-100 GB&quot;</span><span class="p">,</span> <span class="s2">&quot;~50-100 ns&quot;</span><span class="p">,</span> <span class="s2">&quot;25 GB/s (one DDR channel) to ~1 TB/s (HBM stack)&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;flash&quot;</span><span class="p">,</span> <span class="s2">&quot;~TB&quot;</span><span class="p">,</span> <span class="s2">&quot;~100 us&quot;</span><span class="p">,</span> <span class="s2">&quot;GB/s&quot;</span><span class="p">)):</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">24s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;12s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;12s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">r</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;20s</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 6. what the book&#39;s chips assume: Chapter 5&#39;s DMA has a FIXED latency (8 cycles) and one word per cycle. In this model that is the cost of a row hit followed by a stream; the real part is the pattern-dependent table above&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="n">cycle</span> <span class="o">=</span> <span class="mf">1.0</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  at a 1 ns cycle, the assumed row-hit access of </span><span class="si">{</span><span class="n">tCL</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> ns is </span><span class="si">{</span><span class="n">tCL</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">cycle</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> cycles; an 8-cycle latency is a faster, hit-only memory; the chapters&#39; cycle counts are therefore OPTIMISTIC for DRAM and exact for the SRAM scratchpad&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 7. bytes per token against bandwidth (Chapter 9): the ceiling on decode speed is bandwidth divided by the bytes read per token (derived)&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="k">for</span> <span class="n">nm</span><span class="p">,</span> <span class="n">by</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;7B-class, fp16 weights (14 GB)&quot;</span><span class="p">,</span> <span class="mf">14e9</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;7B-class, int8 (7 GB)&quot;</span><span class="p">,</span> <span class="mf">7e9</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;7B-class, int4 (3.5 GB)&quot;</span><span class="p">,</span> <span class="mf">3.5e9</span><span class="p">)):</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">nm</span><span class="si">:</span><span class="s2">32s</span><span class="si">}</span><span class="s2">: &quot;</span> <span class="o">+</span> <span class="s2">&quot;  &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bw</span><span class="si">:</span><span class="s2">5.0f</span><span class="si">}</span><span class="s2"> GB/s -&gt; </span><span class="si">{</span><span class="n">bw</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e9</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">by</span><span class="si">:</span><span class="s2">6.1f</span><span class="si">}</span><span class="s2"> tok/s&quot;</span> <span class="k">for</span> <span class="n">bw</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)))</span>
+</code></pre></div>
+<p>To compile and run: <code>python3 tools/appx_f.py</code> (instant; Python only). Recorded output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>== 1. what a DRAM access costs: it depends on whether the row is already open (assumed timings in ns)
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  row hit  (the row is open):              column access 14.0 -&gt; 14.0 ns to the first data
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  row empty (the bank is idle):            activate 14.0 + column access 14.0 -&gt; 28.0 ns
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  row miss (another row is open):          precharge 14.0 + activate 14.0 + column access 14.0 -&gt; 42.0 ns
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  one burst of 64 bytes then occupies the bus for 2.5 ns: the peak bandwidth of one channel is 25.6 GB/s
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>== 2. access patterns on the same DRAM: sequential (streaming a weight matrix), strided (column access), random (a gather). 8 banks, open-page policy
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  pattern                         one request at a time     8 requests in flight
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  sequential 64-byte lines        3.83 GB/s ( 99% row hits)   25.34 GB/s ( 99% row hits)
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>  strided by 4 KiB                3.51 GB/s ( 94% row hits)   15.06 GB/s ( 94% row hits)
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>  random lines                    1.44 GB/s (  0% row hits)    7.56 GB/s (  0% row hits)
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>  the strided pattern puts every access in the same bank (bank = line number mod 8, and 4 KiB is exactly 64 lines): the row hits are as good as the stream&#39;s but there is no bank parallelism, so the throughput is lower
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>  peak of the channel: 25.6 GB/s. Streaming reaches a large part of it only with several requests in flight (latency hidden by parallelism); random access cannot, because most requests pay an activate
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>== 3. open-page against closed-page policy (keep the row open after an access, or close it at once)
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>  pattern                         open page  closed page
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>  sequential                       25.34 GB/s     12.19 GB/s
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>  random                            7.56 GB/s      6.51 GB/s
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>  in this toy model open page wins for both patterns: for a stream by a factor of two (every access after the first is a row hit), for random access narrowly (a closed bank skips the precharge on the critical path but stays busy longer). Real controllers choose per workload or adaptively; the table shows only that the policy is a trade-off and that locality is what makes DRAM fast
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>== 4. how many banks does it take? (sequential stream, 8 requests in flight)
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>   1 banks:  23.49 GB/s
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>   2 banks:  24.63 GB/s
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>   4 banks:  25.10 GB/s
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>   8 banks:  25.34 GB/s
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>  16 banks:  25.38 GB/s
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>== 5. memories are a hierarchy: smaller is faster (typical orders of magnitude, ASSUMED; they differ by process and design)
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>  level                            size      latency   bandwidth per unit
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>  registers                       ~1 KB 0 (same cycle)            many TB/s
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>  on-chip SRAM scratchpad     ~1-100 MB      1-10 ns   TB/s (wide, close)
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>  HBM / GDDR / DDR DRAM      ~10-100 GB   ~50-100 ns 25 GB/s (one DDR channel) to ~1 TB/s (HBM stack)
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>  flash                             ~TB      ~100 us                 GB/s
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>== 6. what the book&#39;s chips assume: Chapter 5&#39;s DMA has a FIXED latency (8 cycles) and one word per cycle. In this model that is the cost of a row hit followed by a stream; the real part is the pattern-dependent table above
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>  at a 1 ns cycle, the assumed row-hit access of 14 ns is 14 cycles; an 8-cycle latency is a faster, hit-only memory; the chapters&#39; cycle counts are therefore OPTIMISTIC for DRAM and exact for the SRAM scratchpad
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a>
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>== 7. bytes per token against bandwidth (Chapter 9): the ceiling on decode speed is bandwidth divided by the bytes read per token (derived)
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>  7B-class, fp16 weights (14 GB)  :    50 GB/s -&gt;    3.6 tok/s    200 GB/s -&gt;   14.3 tok/s   1000 GB/s -&gt;   71.4 tok/s
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>  7B-class, int8 (7 GB)           :    50 GB/s -&gt;    7.1 tok/s    200 GB/s -&gt;   28.6 tok/s   1000 GB/s -&gt;  142.9 tok/s
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>  7B-class, int4 (3.5 GB)         :    50 GB/s -&gt;   14.3 tok/s    200 GB/s -&gt;   57.1 tok/s   1000 GB/s -&gt;  285.7 tok/s
+</code></pre></div>
+<h2 id="self-check-questions">Self-check questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Why does a row hit cost less than a row miss? What does the precharge do?</li>
+<li>A DRAM channel delivers 25.6 GB/s at peak. How long does it take to stream the 7 GB of an int8 7B model once?</li>
+<li>Why does one request at a time give 3.8 GB/s from a memory whose peak is 25.6?</li>
+<li>Why is a stride of 4 KiB bad for the toy model's banks? What would you change in the address mapping?</li>
+<li>An accelerator has 1 TB/s of HBM and a 7B int8 model. What is the best decode speed at batch 1? At batch 8, if the weights are read once per step and the cache is neglected?</li>
+<li>Which of the book's chip assumptions would change if the memory were real DRAM, and which would not?</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
