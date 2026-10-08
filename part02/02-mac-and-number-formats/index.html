@@ -771,7 +771,7 @@
   <span class="md-ellipsis">
     
   
-    11. The Compiler: From a Tensor Graph to GA-2 Instructions
+    11. Capra, the Compiler: From a Tensor Graph to GA-2 Instructions
   
 
     
@@ -1037,6 +1037,17 @@
 
 
 <h1 id="2-the-mac-and-number-formats-twos-complement-overflow-and-the-tests-that-found-three-holes">2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes<a class="headerlink" href="#2-the-mac-and-number-formats-twos-complement-overflow-and-the-tests-that-found-three-holes" title="Permanent link">&para;</a></h1>
+<p><img alt="ch-02" src="../../assets/art/ch-02.svg" /></p>
+<details class="info">
+<summary>About the animals in this picture and where they are standing</summary>
+<ul>
+<li><strong>Nubian ibex</strong> (<em>Capra nubiana</em>) lives in the rocky, arid hills of north-east Africa and the Arabian Peninsula, from the Sinai and Egypt south to Sudan and Ethiopia. Its coat matches the desert rock, and the males' ridged horns sweep back like a sickle.</li>
+<li><strong>Walia ibex</strong> (<em>Capra walie</em>) lives nowhere but the Simien Mountains of northern Ethiopia, on high cliffs. It is endangered, with only a few hundred animals remaining, and is protected within the Simien Mountains National Park.</li>
+<li><strong>Iberian ibex</strong> (<em>Capra pyrenaica</em>) lives in the mountains of Spain and Portugal. Its Pyrenean subspecies, the bucardo, died out in 2000. In 2003 scientists cloned one; the kid lived only minutes, making it the first extinct animal to be cloned.</li>
+<li><strong>Markhor</strong> (<em>Capra falconeri</em>) lives in the mountains of Pakistan, Afghanistan and neighbouring regions. The males' horns twist in a corkscrew; the name is often explained as Persian for 'snake-eater'. It is Pakistan's national animal, and community-based conservation has helped some populations recover.</li>
+</ul>
+<p>The scene is imaginary: it is set on Mars: gravity about 38% of Earth's, a dusty red landscape and two small moons, Phobos and Deimos. The animals are stylised drawings, shown where they could not live, for effect.</p>
+</details>
 <p><strong>What you will understand:</strong> how an 8-bit signed number is stored, why the multiply-accumulate (MAC) unit is the atom of every matrix engine, what happens when a sum does not fit (wrap or saturate), and what the same multiplier costs when it is written two different ways. You will also see a test suite that <em>looked</em> complete have three holes, found by breaking the circuit on purpose.</p>
 <p><strong>What you need to know first:</strong> Chapter 1 (the flow: golden model, two simulators, Yosys, mutation).</p>
 <h2 id="twos-complement-in-one-paragraph">Two's complement in one paragraph<a class="headerlink" href="#twos-complement-in-one-paragraph" title="Permanent link">&para;</a></h2>

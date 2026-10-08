@@ -732,7 +732,7 @@
   <span class="md-ellipsis">
     
   
-    11. The Compiler: From a Tensor Graph to GA-2 Instructions
+    11. Capra, the Compiler: From a Tensor Graph to GA-2 Instructions
   
 
     
@@ -959,6 +959,17 @@
 
 
 <h1 id="8-attention-and-the-kv-cache-one-decode-step-from-hidden-state-to-output">8. Attention and the KV Cache: One Decode Step, From Hidden State to Output<a class="headerlink" href="#8-attention-and-the-kv-cache-one-decode-step-from-hidden-state-to-output" title="Permanent link">&para;</a></h1>
+<p><img alt="ch-08" src="../../assets/art/ch-08.svg" /></p>
+<details class="info">
+<summary>About the animals in this picture and where they are standing</summary>
+<ul>
+<li><strong>West Caucasian tur</strong> (<em>Capra caucasica</em>) lives only in the western Caucasus, on steep slopes above the forest line. Its horns are short and heavy, curving outward and back, and it moves up and down cliffs with ease.</li>
+<li><strong>Markhor</strong> (<em>Capra falconeri</em>) lives in the mountains of Pakistan, Afghanistan and neighbouring regions. The males' horns twist in a corkscrew; the name is often explained as Persian for 'snake-eater'. It is Pakistan's national animal, and community-based conservation has helped some populations recover.</li>
+<li><strong>Bezoar ibex (wild goat)</strong> (<em>Capra aegagrus</em>) lives from Turkey and the Caucasus through Iran to Pakistan. It is the wild ancestor of the domestic goat, which people began keeping some ten thousand years ago.</li>
+<li><strong>Alpine ibex</strong> (<em>Capra ibex</em>) lives in the European Alps, usually above the tree line on steep rock, and is a famously sure-footed climber. Males carry horns that can reach about a metre. Hunting left only a small remnant, around the Gran Paradiso in Italy, by the early 1800s; reintroductions have since restored it across the Alps.</li>
+</ul>
+<p>The scene is imaginary: it is set on Enceladus, a small icy moon of Saturn whose south pole sprays water-ice geysers; Saturn and its rings loom overhead. The animals are stylised drawings, shown where they could not live, for effect.</p>
+</details>
 <p><strong>What you will understand:</strong> what a language model actually computes to produce one token, why it keeps a <strong>KV cache</strong>, and what the cache costs and saves, measured in cycles on the chip of Chapter 7. You will write the decode step as a GA-2 program (the hand-written forerunner of the compiler of Chapter 11), run it on the RTL, compare its answer with floating-point attention, see where the quantization error comes from, and then test the <em>program builder</em> by mutation, where three different kinds of check turn out to have three different blind spots.</p>
 <p><strong>What you need to know first:</strong> Chapters 3 (quantization), 6 (softmax) and 7 (the GA-2 instruction set).</p>
 <h2 id="what-a-decode-step-computes">What a decode step computes<a class="headerlink" href="#what-a-decode-step-computes" title="Permanent link">&para;</a></h2>

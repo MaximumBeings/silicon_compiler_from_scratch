@@ -743,7 +743,7 @@
   <span class="md-ellipsis">
     
   
-    11. The Compiler: From a Tensor Graph to GA-2 Instructions
+    11. Capra, the Compiler: From a Tensor Graph to GA-2 Instructions
   
 
     
@@ -981,6 +981,18 @@
 
 
 <h1 id="5-the-scratchpad-the-dma-engine-and-double-buffering">5. The Scratchpad, the DMA Engine, and Double Buffering<a class="headerlink" href="#5-the-scratchpad-the-dma-engine-and-double-buffering" title="Permanent link">&para;</a></h1>
+<p><img alt="ch-05" src="../../assets/art/ch-05.svg" /></p>
+<details class="info">
+<summary>About the animals in this picture and where they are standing</summary>
+<ul>
+<li><strong>Alpine ibex</strong> (<em>Capra ibex</em>) lives in the European Alps, usually above the tree line on steep rock, and is a famously sure-footed climber. Males carry horns that can reach about a metre. Hunting left only a small remnant, around the Gran Paradiso in Italy, by the early 1800s; reintroductions have since restored it across the Alps.</li>
+<li><strong>West Caucasian tur</strong> (<em>Capra caucasica</em>) lives only in the western Caucasus, on steep slopes above the forest line. Its horns are short and heavy, curving outward and back, and it moves up and down cliffs with ease.</li>
+<li><strong>Iberian ibex</strong> (<em>Capra pyrenaica</em>) lives in the mountains of Spain and Portugal. Its Pyrenean subspecies, the bucardo, died out in 2000. In 2003 scientists cloned one; the kid lived only minutes, making it the first extinct animal to be cloned.</li>
+<li><strong>Domestic goat</strong> (<em>Capra hircus</em>) descends from the bezoar ibex and is among the oldest domesticated animals. There are on the order of a billion of them, kept for milk, meat, fibre and as pack animals.</li>
+<li><strong>Walia ibex</strong> (<em>Capra walie</em>) lives nowhere but the Simien Mountains of northern Ethiopia, on high cliffs. It is endangered, with only a few hundred animals remaining, and is protected within the Simien Mountains National Park.</li>
+</ul>
+<p>The scene is imaginary: it is set on Europa, the icy moon of Jupiter, which hides a salty ocean beneath its ice; Jupiter fills the sky. The animals are stylised drawings, shown where they could not live, for effect.</p>
+</details>
 <p><strong>What you will understand:</strong> why an accelerator has its own small memory instead of a cache, how a DMA engine moves data without the compute units waiting on it, and how <strong>double buffering</strong> hides memory latency behind arithmetic. You will build all three, derive the cycle count of the whole stream as a formula, check the formula against the circuit to the cycle on eight shapes, and see which shapes of test are needed to catch the bugs in the controller.</p>
 <p><strong>What you need to know first:</strong> Chapters 1-4. No new arithmetic: this chapter is about <em>time</em>.</p>
 <h2 id="the-problem-compute-is-fast-memory-is-slow">The problem: compute is fast, memory is slow<a class="headerlink" href="#the-problem-compute-is-fast-memory-is-slow" title="Permanent link">&para;</a></h2>

@@ -732,7 +732,7 @@
   <span class="md-ellipsis">
     
   
-    11. The Compiler: From a Tensor Graph to GA-2 Instructions
+    11. Capra, the Compiler: From a Tensor Graph to GA-2 Instructions
   
 
     
@@ -959,6 +959,16 @@
 
 
 <h1 id="9-batching-and-bandwidth-why-decoding-is-slow-and-what-helps">9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps<a class="headerlink" href="#9-batching-and-bandwidth-why-decoding-is-slow-and-what-helps" title="Permanent link">&para;</a></h1>
+<p><img alt="ch-09" src="../../assets/art/ch-09.svg" /></p>
+<details class="info">
+<summary>About the animals in this picture and where they are standing</summary>
+<ul>
+<li><strong>Domestic goat</strong> (<em>Capra hircus</em>) descends from the bezoar ibex and is among the oldest domesticated animals. There are on the order of a billion of them, kept for milk, meat, fibre and as pack animals.</li>
+<li><strong>Alpine ibex</strong> (<em>Capra ibex</em>) lives in the European Alps, usually above the tree line on steep rock, and is a famously sure-footed climber. Males carry horns that can reach about a metre. Hunting left only a small remnant, around the Gran Paradiso in Italy, by the early 1800s; reintroductions have since restored it across the Alps.</li>
+<li><strong>Markhor</strong> (<em>Capra falconeri</em>) lives in the mountains of Pakistan, Afghanistan and neighbouring regions. The males' horns twist in a corkscrew; the name is often explained as Persian for 'snake-eater'. It is Pakistan's national animal, and community-based conservation has helped some populations recover.</li>
+</ul>
+<p>The scene is imaginary: it is set on an imaginary planet with two suns and a purple moon. The animals are stylised drawings, shown where they could not live, for effect.</p>
+</details>
 <p><strong>What you will understand:</strong> the one idea that explains most of the economics of running a language model: <strong>decoding is limited by memory traffic, not by arithmetic.</strong> You will measure it on the chip, build the standard remedy (batching several requests so they share the weights), see exactly how much of the problem it fixes and what it cannot touch, state the limit with a <strong>roofline</strong>, and test the batched program builder with the oracle that batching makes possible: <em>a request must get the same answer whether or not other requests ride along.</em></p>
 <p><strong>What you need to know first:</strong> Chapter 7 (the chip and its counters) and Chapter 8 (the decode step).</p>
 <h2 id="arithmetic-intensity-how-much-work-per-byte-moved">Arithmetic intensity: how much work per byte moved<a class="headerlink" href="#arithmetic-intensity-how-much-work-per-byte-moved" title="Permanent link">&para;</a></h2>
