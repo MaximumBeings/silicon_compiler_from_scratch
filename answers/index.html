@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="A systolic array in Verilog, int8 quantization, KV cache and batching, bandwidth analysis, a Yosys synthesis flow, and a compiler from a model graph to the chip. Open-source tools only.">
+        <meta name="description" content="Capra, a compiler for an open-source LLM-inference accelerator, built from scratch - a systolic array in Verilog, int8 quantization, KV cache and batching, a Yosys synthesis flow, and the compiler that targets the chip. Open-source tools only.">
       
       
         <meta name="author" content="Oluwaseyi Awoga">
@@ -25,7 +25,7 @@
     
     
       
-        <title>Answers to the Self-Check Questions - Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development</title>
+        <title>Answers to the Self-Check Questions - Capra: Silicon Compiler from Scratch</title>
       
     
     
@@ -92,7 +92,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-header__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+    <a href=".." title="Capra: Silicon Compiler from Scratch" class="md-header__button md-logo" aria-label="Capra: Silicon Compiler from Scratch" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+            Capra: Silicon Compiler from Scratch
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -218,13 +218,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-nav__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+    <a href=".." title="Capra: Silicon Compiler from Scratch" class="md-nav__button md-logo" aria-label="Capra: Silicon Compiler from Scratch" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
 
     </a>
-    Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+    Capra: Silicon Compiler from Scratch
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -1496,6 +1496,12 @@
 <p>Worked answer: the reference calls <code>rq_params</code> for its scales, just as the builder does, so a bug in <code>rq_params</code> changes both outputs identically and they remain equal. The stage-wise check never calls <code>rq_params</code>: it recomputes each stage from the real-valued meaning of the scales (q should equal the product of the quantized inputs times scale_x times scale_w divided by scale_q), so a 3% error moves some values by several levels, and it reports them.</p>
 <p><strong>5. Why can no single-step test catch "the new key is never appended to the cache"?</strong></p>
 <p>Worked answer: the append writes the new key to external memory for use by the <em>following</em> step; within the step itself the new key is already in the scratchpad, so the output of this step is the same with or without the append. Only a test that runs a second step reading the cache the first step wrote can see it. That is why <code>sequence()</code> runs whole decode loops with the external memory persisting from step to step.</p>
+<p><strong>6. Why 0.297 against 0.291, and what changes at 1/32?</strong></p>
+<p>Worked answer: the chip rounds each score to a multiple of 1/16 (scores x 16 as int8): 0.7071 becomes 11/16 = 0.6875, 0.3536 becomes 6/16 = 0.375, 1.0607 becomes 17/16 = 1.0625, -0.7071 becomes -11/16. The softmax of those rounded scores gives 0.2907 for token 0. Chapter 6's integer softmax itself adds only 0.00002. Keeping scores to 1/32 halves the rounding step, so the error of the weights would roughly halve, at the price of an extra bit in the score format and a larger exp table.</p>
+<p><strong>7. Cache for 12 layers, 12 heads of width 64, int8, 4,096 tokens.</strong></p>
+<p>Worked answer: per token 2 x 12 x 12 x 64 x 1 = 18,432 bytes; for 4,096 tokens 18,432 x 4,096 = 75,497,472 bytes = 72 MiB.</p>
+<p><strong>8. Why is the cached step not faster at context length 1?</strong></p>
+<p>Worked answer: with one token there is nothing in the cache to reuse, so the cached program does the same projections as the recompute program (one row), plus two extra instructions that append k and v to the cache in external memory (2,500 against 2,460 cycles). The benefit only appears when there are earlier tokens whose keys and values would otherwise be recomputed.</p>
 <hr />
 <h2 id="chapter-9">Chapter 9<a class="headerlink" href="#chapter-9" title="Permanent link">&para;</a></h2>
 <p><strong>1. What is GA-2's ridge point, and which side of it is a decode step on?</strong></p>
