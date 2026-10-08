@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../part13/13-int4-weights/">
+        <link rel="prev" href="../part14/14-grouped-query-attention/">
       
       
       
@@ -1058,6 +1058,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part14/14-grouped-query-attention/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. Grouped-Query Attention
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1264,10 +1292,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#chapter-1-additional-questions" class="md-nav__link">
+  <a href="#worked-answer-each-decode-step-is-a-separately-compiled-program-and-without-ranges-each-would-calibrate-its-own-scale-for-k-and-v-from-its-own-context-length-the-host-stores-the-cache-as-the-dequantized-values-the-chip-returned-and-re-quantizes-it-with-the-next-programs-scale-if-that-scale-changed-from-step-to-step-every-step-would-re-round-every-cached-row-at-a-different-resolution-and-the-scale-would-depend-on-the-length-of-the-context-fixing-one-range-for-the-k-and-v-tags-taken-over-all-steps-in-calibration-gives-every-program-the-same-scale-for-the-cache" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Chapter 1 (additional questions)
+        Worked answer: each decode step is a separately compiled program, and without ranges= each would calibrate its own scale for k and v from its own context length. The host stores the cache as the dequantized values the chip returned and re-quantizes it with the next program's scale; if that scale changed from step to step, every step would re-round every cached row at a different resolution and the scale would depend on the length of the context. Fixing one range for the k and v tags (taken over all steps in calibration) gives every program the same scale for the cache.
       
     </span>
   </a>
@@ -1286,10 +1314,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#chapter-1-hints-for-the-exercises" class="md-nav__link">
+  <a href="#chapter-13-hints-for-the-exercises" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Chapter 1 -- hints for the exercises
+        Chapter 13 -- hints for the exercises
       
     </span>
   </a>
@@ -1297,10 +1325,54 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#chapter-13-hints-for-the-exercises" class="md-nav__link">
+  <a href="#chapter-14" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Chapter 13 -- hints for the exercises
+        Chapter 14
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-14-hints-for-the-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 14 -- hints for the exercises
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-1-additional-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 1 (additional questions)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-answer-the-testbench-raises-rst-in-the-middle-of-a-cycle-and-samples-q-after-the-next-rising-edge-by-then-both-the-synchronous-circuit-which-resets-at-the-edge-and-the-asynchronous-one-which-reset-earlier-show-q-0-so-they-look-identical-they-differ-only-in-when-q-changed-which-is-visible-in-the-combinational-output-wrap-en-q-15-in-the-asynchronous-circuit-it-drops-immediately-when-rst-rises-in-the-synchronous-one-it-stays-until-the-edge-only-a-check-of-wrap-before-the-edge-sees-the-difference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked answer: the testbench raises rst in the middle of a cycle and samples q after the next rising edge. By then both the synchronous circuit (which resets at the edge) and the asynchronous one (which reset earlier) show q = 0, so they look identical. They differ only in when q changed, which is visible in the combinational output wrap = en &amp;&amp; q == 15: in the asynchronous circuit it drops immediately when rst rises, in the synchronous one it stays until the edge. Only a check of wrap before the edge sees the difference.
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-1-hints-for-the-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 1 -- hints for the exercises
       
     </span>
   </a>
@@ -1474,10 +1546,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#chapter-1-additional-questions" class="md-nav__link">
+  <a href="#worked-answer-each-decode-step-is-a-separately-compiled-program-and-without-ranges-each-would-calibrate-its-own-scale-for-k-and-v-from-its-own-context-length-the-host-stores-the-cache-as-the-dequantized-values-the-chip-returned-and-re-quantizes-it-with-the-next-programs-scale-if-that-scale-changed-from-step-to-step-every-step-would-re-round-every-cached-row-at-a-different-resolution-and-the-scale-would-depend-on-the-length-of-the-context-fixing-one-range-for-the-k-and-v-tags-taken-over-all-steps-in-calibration-gives-every-program-the-same-scale-for-the-cache" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Chapter 1 (additional questions)
+        Worked answer: each decode step is a separately compiled program, and without ranges= each would calibrate its own scale for k and v from its own context length. The host stores the cache as the dequantized values the chip returned and re-quantizes it with the next program's scale; if that scale changed from step to step, every step would re-round every cached row at a different resolution and the scale would depend on the length of the context. Fixing one range for the k and v tags (taken over all steps in calibration) gives every program the same scale for the cache.
       
     </span>
   </a>
@@ -1496,10 +1568,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#chapter-1-hints-for-the-exercises" class="md-nav__link">
+  <a href="#chapter-13-hints-for-the-exercises" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Chapter 1 -- hints for the exercises
+        Chapter 13 -- hints for the exercises
       
     </span>
   </a>
@@ -1507,10 +1579,54 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#chapter-13-hints-for-the-exercises" class="md-nav__link">
+  <a href="#chapter-14" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Chapter 13 -- hints for the exercises
+        Chapter 14
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-14-hints-for-the-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 14 -- hints for the exercises
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-1-additional-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 1 (additional questions)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#worked-answer-the-testbench-raises-rst-in-the-middle-of-a-cycle-and-samples-q-after-the-next-rising-edge-by-then-both-the-synchronous-circuit-which-resets-at-the-edge-and-the-asynchronous-one-which-reset-earlier-show-q-0-so-they-look-identical-they-differ-only-in-when-q-changed-which-is-visible-in-the-combinational-output-wrap-en-q-15-in-the-asynchronous-circuit-it-drops-immediately-when-rst-rises-in-the-synchronous-one-it-stays-until-the-edge-only-a-check-of-wrap-before-the-edge-sees-the-difference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Worked answer: the testbench raises rst in the middle of a cycle and samples q after the next rising edge. By then both the synchronous circuit (which resets at the edge) and the asynchronous one (which reset earlier) show q = 0, so they look identical. They differ only in when q changed, which is visible in the combinational output wrap = en &amp;&amp; q == 15: in the asynchronous circuit it drops immediately when rst rises, in the synchronous one it stays until the edge. Only a check of wrap before the edge sees the difference.
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-1-hints-for-the-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 1 -- hints for the exercises
       
     </span>
   </a>
@@ -1758,16 +1874,7 @@
 <p><strong>7. Would a logit error of 5.0 change the decision?</strong></p>
 <p>Worked answer: the margin between the winner (+7.82) and the next logit (+0.5) is about 7.3. If each logit can be wrong by 5.0, their difference can be wrong by up to 10, which exceeds the margin, so the decision could flip. With the measured error of 0.05 the difference moves by at most 0.1, 1.4% of the margin. A decision is safe when the margin exceeds twice the largest error on a logit; this model has a wide margin, which is why int8 is safe here and why the generic random model (small margins) flips about 3% of the time.</p>
 <p><strong>8. Why fix the KV cache's range from outside?</strong></p>
-<p>Worked answer: each decode step is a separately compiled program, and without <code>ranges=</code> each would calibrate its own scale for k and v from its own context length. The host stores the cache as the dequantized values the chip returned and re-quantizes it with the next program's scale; if that scale changed from step to step, every step would re-round every cached row at a different resolution and the scale would depend on the length of the context. Fixing one range for the <code>k</code> and <code>v</code> tags (taken over all steps in calibration) gives every program the same scale for the cache.</p>
-<hr />
-<h2 id="chapter-1-additional-questions">Chapter 1 (additional questions)<a class="headerlink" href="#chapter-1-additional-questions" title="Permanent link">&para;</a></h2>
-<p><strong>6. In the ripple example the <code>sum</code> bus shows <code>6, 4, 0, 8</code> after 7 + 1. Why are there wrong values at all, and how long after the inputs change is the answer valid?</strong></p>
-<p>Worked answer: every full adder computes its sum from the carry it sees <em>now</em>, and the carries have not yet arrived: at the first instant all carries are still 0, so the sum bits are those of 0111 + 0001 without carries, giving 0110 (6). Then carry 1 reaches stage 1 and the sum becomes 0100 (4), carry 2 reaches stage 2 (0000), and carry 3 reaches stage 3 (1000 = 8). With a 1 ns delay per full adder the answer is valid 4 ns after the inputs change: three carry hops plus the last stage's own delay.</p>
-<p><strong>7. Why do clocked blocks use <code>&lt;=</code> and not <code>=</code>? What goes wrong in a design with two registers that swap their values (<code>a &lt;= b; b &lt;= a;</code>) if you write <code>=</code>?</strong></p>
-<p>Worked answer: non-blocking assignments sample every right-hand side with the values from before the clock edge and update all the registers together afterwards, as real flip-flops do. With <code>a = b; b = a;</code> the first statement overwrites <code>a</code> immediately, so the second copies the <em>new</em> <code>a</code>, and both registers end up holding the old <code>b</code>: the swap is lost. With <code>&lt;=</code> both read the old values and the registers really exchange them.</p>
-<p><strong>8. The asynchronous-reset mutant of the counter is caught only because the testbench checks <code>wrap</code>. Explain why a test that checked only <code>q</code> after the clock edge would have missed it.</strong></p>
-<p>Worked answer: the testbench raises <code>rst</code> in the middle of a cycle and samples <code>q</code> after the next rising edge. By then both the synchronous circuit (which resets at the edge) and the asynchronous one (which reset earlier) show <code>q = 0</code>, so they look identical. They differ only in <em>when</em> <code>q</code> changed, which is visible in the combinational output <code>wrap = en &amp;&amp; q == 15</code>: in the asynchronous circuit it drops immediately when <code>rst</code> rises, in the synchronous one it stays until the edge. Only a check of <code>wrap</code> before the edge sees the difference.</p>
-<hr />
+<h2 id="worked-answer-each-decode-step-is-a-separately-compiled-program-and-without-ranges-each-would-calibrate-its-own-scale-for-k-and-v-from-its-own-context-length-the-host-stores-the-cache-as-the-dequantized-values-the-chip-returned-and-re-quantizes-it-with-the-next-programs-scale-if-that-scale-changed-from-step-to-step-every-step-would-re-round-every-cached-row-at-a-different-resolution-and-the-scale-would-depend-on-the-length-of-the-context-fixing-one-range-for-the-k-and-v-tags-taken-over-all-steps-in-calibration-gives-every-program-the-same-scale-for-the-cache">Worked answer: each decode step is a separately compiled program, and without <code>ranges=</code> each would calibrate its own scale for k and v from its own context length. The host stores the cache as the dequantized values the chip returned and re-quantizes it with the next program's scale; if that scale changed from step to step, every step would re-round every cached row at a different resolution and the scale would depend on the length of the context. Fixing one range for the <code>k</code> and <code>v</code> tags (taken over all steps in calibration) gives every program the same scale for the cache.<a class="headerlink" href="#worked-answer-each-decode-step-is-a-separately-compiled-program-and-without-ranges-each-would-calibrate-its-own-scale-for-k-and-v-from-its-own-context-length-the-host-stores-the-cache-as-the-dequantized-values-the-chip-returned-and-re-quantizes-it-with-the-next-programs-scale-if-that-scale-changed-from-step-to-step-every-step-would-re-round-every-cached-row-at-a-different-resolution-and-the-scale-would-depend-on-the-length-of-the-context-fixing-one-range-for-the-k-and-v-tags-taken-over-all-steps-in-calibration-gives-every-program-the-same-scale-for-the-cache" title="Permanent link">&para;</a></h2>
 <h2 id="chapter-13">Chapter 13<a class="headerlink" href="#chapter-13" title="Permanent link">&para;</a></h2>
 <p><strong>1. Why <code>-7 .. 7</code>, not <code>-8 .. 7</code>?</strong></p>
 <p>Worked answer: the range stays symmetric, so negating a weight never overflows (<code>-(-8)</code> has no 4-bit representation), a single scale works for both signs, and zero stays exactly zero with the same step on both sides. The cost is one unused code out of sixteen (6% of the range).</p>
@@ -1785,14 +1892,6 @@
 <p>Worked answer: the designed model's answer is fixed by large, well-separated logits (Chapter 12 measured the gap between the best and second-best), so noise of 15-20% cannot reorder them; the random model's logits are close together, so the same noise changes the argmax in 9% of the decisions.</p>
 <p><strong>8. Why does a per-column scale need a different requantizer?</strong></p>
 <p>Worked answer: the product <code>x W</code> accumulates in integers; each output column j is multiplied by <code>scale_x * scale_Wj</code> to return to real values. With one scale per tensor, one multiplier and shift (the RQ instruction's <code>m</code> and <code>s</code>) serve every column; with per-column scales the multiplier differs by column, so RQ would need a vector of multipliers or one RQ per column.</p>
-<hr />
-<h2 id="chapter-1-hints-for-the-exercises">Chapter 1 -- hints for the exercises<a class="headerlink" href="#chapter-1-hints-for-the-exercises" title="Permanent link">&para;</a></h2>
-<ol>
-<li>65,536 x 2 = 131,072 cases: still exhaustive and still fast; the 8-bit settling time in the delayed model would be 8 stages' worth.</li>
-<li>A decade counter's wrap condition is <code>q == 9</code>; mutants worth adding: wraps at 10, wraps at 15 (not changed from the original), reset loads 9.</li>
-<li>A reasonable priority is rst, then load, then en; the mutants are each swap of that order, and a missing <code>load</code> case.</li>
-<li>For the 8-bit-input adder there is no input that is not tested; for a 16-bit adder with 1,000 random cases, a mutant that breaks only when <code>a == 16'hFFFF &amp;&amp; b == 16'h0001</code> is untouched by random testing with overwhelming probability.</li>
-</ol>
 <h2 id="chapter-13-hints-for-the-exercises">Chapter 13 -- hints for the exercises<a class="headerlink" href="#chapter-13-hints-for-the-exercises" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Uniform weights have no tails, so the largest weight is only 1.7x the standard deviation instead of about 3x: fewer codes are wasted on rare large values.</li>
@@ -1801,6 +1900,47 @@
 <li>Two outputs per cycle gives 1 + 1 + 4 = 6 cycles per word; the break-even becomes 7/6 = 1.17 words per cycle, still only a little above this chip's 1 word per cycle.</li>
 <li>Make several int4 weights of about 1,400 elements each (they need 175 staging words each) so that without release the staging areas plus the weight buffers exceed 4,096 words.</li>
 <li>One multiply and one add (or one multiply of the dequantized outputs) per output element: 32 extra operations for a 1x32 result; the result equals the dequantized per-column study up to the requantizer's own rounding.</li>
+</ol>
+<hr />
+<h2 id="chapter-14">Chapter 14<a class="headerlink" href="#chapter-14" title="Permanent link">&para;</a></h2>
+<p><strong>1. Head 5 with H = 8, G = 2; cache words for head width 16.</strong></p>
+<p>Worked answer: each group serves H / G = 4 heads, so head 5 reads group 5 // 4 = 1. The cache per token is 2 * G * d words: with d = 16 that is 2 * 8 * 16 = 256 words for G = 8, 64 for G = 2 and 32 for G = 1.</p>
+<p><strong>2. Why split the output projection into per-head slices?</strong></p>
+<p>Worked answer: <code>[a0 a1 a2 a3] Wo</code> has entry j equal to the sum over all 16 positions of <code>a_i Wo[i][j]</code>. Splitting the positions into four blocks of 4 gives four partial sums, <code>a_h</code> times the rows of <code>Wo</code> belonging to head h, and their total is the same number. Capra has no column concatenation or slice, but it has <code>matmul</code> and <code>add</code>.</p>
+<p><strong>3. Why are Wk and Wv smaller under GQA?</strong></p>
+<p>Worked answer: they produce one key and value of width d per group, not per head: <code>D x (G*d)</code> instead of <code>D x (H*d)</code>. The query side (<code>Wq</code>, <code>Wo</code>) keeps all H heads and does not change.</p>
+<p><strong>4. Pooling independent against similar heads.</strong></p>
+<p>Worked answer: the pooled key is the mean of the heads' keys. If the two heads are independent, the mean is a third, different vector that matches neither (its scores correlate with each head's scores only about 0.7 at best, and with random weights much less usefully), so the attention patterns change. If the heads are nearly equal, the mean is nearly each of them and nothing changes. At eps = 0 the mean of equal vectors is the vector itself, so the conversion is exact.</p>
+<p><strong>5. Why do matrix cycles fall with G?</strong></p>
+<p>Worked answer: each group needs a key projection and a value projection (matmuls of the new token with Wk and Wv); fewer groups mean fewer such projections (the MM count falls from 56 to 52 to 50) and a smaller requantization workload. The query, score, context and output matmuls of the four heads do not change.</p>
+<p><strong>6. 256 KiB and 64 KiB per token.</strong></p>
+<p>Worked answer: MHA: 2 (K and V) * 32 layers * 32 heads * 128 values * 1 byte = 262,144 bytes = 256 KiB. GQA with 8 groups: 2 * 32 * 8 * 128 = 65,536 bytes = 64 KiB.</p>
+<p><strong>7. Why did the float-step "no 1/sqrt(d)" mutant survive the first run?</strong></p>
+<p>Worked answer: the mutant changed the float reference only, while checks 1 and 3 compare the float model with itself (or with a rule that attention hardly influences), and check 2 compares the chip's logits with float through a 15% bound that attention's small contribution does not exceed. Only an independent reference step (check 5), or a tensor-level comparison (check 7), disagrees.</p>
+<p><strong>8. Why is a 15% logit bound not enough?</strong></p>
+<p>Worked answer: logits are dominated by the residual path and the output matrix; the attention output is a small part of them. A wrong attention changes the logits by less than the bound, so the check passes while attention is wrong. The remedy is to compare the attention output itself.</p>
+<h2 id="chapter-14-hints-for-the-exercises">Chapter 14 -- hints for the exercises<a class="headerlink" href="#chapter-14-hints-for-the-exercises" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Group the heads as <code>h // 4</code>, <code>h // 2</code>, <code>h</code> for G = 2, 4, 8; the structured rule is decided by the embeddings and Wout, so it should still hold.</li>
+<li>Re-solve <code>Wo</code> on the pooled model so that <code>Wo_new = argmin |A_pooled Wo_new - A_mha Wo|</code> over a batch of activations; the normal equations are small (16 x 16).</li>
+<li>Int4 activations halve the 64 KiB to 32 KiB for G = 8, but the chip has no int4 matrix operand: the activation path would need the operand-path unpacking of Chapter 13's last section.</li>
+<li>Raise a <code>CompileError</code>-style error when <code>H % G != 0</code>; the test builds the graph with <code>G = 3</code> and expects the refusal.</li>
+<li>Calibration range of <code>v</code>: halve it. If the checks still pass, either the effect is below the 12% bound (a gap in the check) or the compiler clamps to the range (then equivalent).</li>
+</ol>
+<hr />
+<h2 id="chapter-1-additional-questions">Chapter 1 (additional questions)<a class="headerlink" href="#chapter-1-additional-questions" title="Permanent link">&para;</a></h2>
+<p><strong>6. In the ripple example the <code>sum</code> bus shows <code>6, 4, 0, 8</code> after 7 + 1. Why are there wrong values at all, and how long after the inputs change is the answer valid?</strong></p>
+<p>Worked answer: every full adder computes its sum from the carry it sees <em>now</em>, and the carries have not yet arrived: at the first instant all carries are still 0, so the sum bits are those of 0111 + 0001 without carries, giving 0110 (6). Then carry 1 reaches stage 1 and the sum becomes 0100 (4), carry 2 reaches stage 2 (0000), and carry 3 reaches stage 3 (1000 = 8). With a 1 ns delay per full adder the answer is valid 4 ns after the inputs change: three carry hops plus the last stage's own delay.</p>
+<p><strong>7. Why do clocked blocks use <code>&lt;=</code> and not <code>=</code>? What goes wrong in a design with two registers that swap their values (<code>a &lt;= b; b &lt;= a;</code>) if you write <code>=</code>?</strong></p>
+<p>Worked answer: non-blocking assignments sample every right-hand side with the values from before the clock edge and update all the registers together afterwards, as real flip-flops do. With <code>a = b; b = a;</code> the first statement overwrites <code>a</code> immediately, so the second copies the <em>new</em> <code>a</code>, and both registers end up holding the old <code>b</code>: the swap is lost. With <code>&lt;=</code> both read the old values and the registers really exchange them.</p>
+<p><strong>8. The asynchronous-reset mutant of the counter is caught only because the testbench checks <code>wrap</code>. Explain why a test that checked only <code>q</code> after the clock edge would have missed it.</strong></p>
+<h2 id="worked-answer-the-testbench-raises-rst-in-the-middle-of-a-cycle-and-samples-q-after-the-next-rising-edge-by-then-both-the-synchronous-circuit-which-resets-at-the-edge-and-the-asynchronous-one-which-reset-earlier-show-q-0-so-they-look-identical-they-differ-only-in-when-q-changed-which-is-visible-in-the-combinational-output-wrap-en-q-15-in-the-asynchronous-circuit-it-drops-immediately-when-rst-rises-in-the-synchronous-one-it-stays-until-the-edge-only-a-check-of-wrap-before-the-edge-sees-the-difference">Worked answer: the testbench raises <code>rst</code> in the middle of a cycle and samples <code>q</code> after the next rising edge. By then both the synchronous circuit (which resets at the edge) and the asynchronous one (which reset earlier) show <code>q = 0</code>, so they look identical. They differ only in <em>when</em> <code>q</code> changed, which is visible in the combinational output <code>wrap = en &amp;&amp; q == 15</code>: in the asynchronous circuit it drops immediately when <code>rst</code> rises, in the synchronous one it stays until the edge. Only a check of <code>wrap</code> before the edge sees the difference.<a class="headerlink" href="#worked-answer-the-testbench-raises-rst-in-the-middle-of-a-cycle-and-samples-q-after-the-next-rising-edge-by-then-both-the-synchronous-circuit-which-resets-at-the-edge-and-the-asynchronous-one-which-reset-earlier-show-q-0-so-they-look-identical-they-differ-only-in-when-q-changed-which-is-visible-in-the-combinational-output-wrap-en-q-15-in-the-asynchronous-circuit-it-drops-immediately-when-rst-rises-in-the-synchronous-one-it-stays-until-the-edge-only-a-check-of-wrap-before-the-edge-sees-the-difference" title="Permanent link">&para;</a></h2>
+<h2 id="chapter-1-hints-for-the-exercises">Chapter 1 -- hints for the exercises<a class="headerlink" href="#chapter-1-hints-for-the-exercises" title="Permanent link">&para;</a></h2>
+<ol>
+<li>65,536 x 2 = 131,072 cases: still exhaustive and still fast; the 8-bit settling time in the delayed model would be 8 stages' worth.</li>
+<li>A decade counter's wrap condition is <code>q == 9</code>; mutants worth adding: wraps at 10, wraps at 15 (not changed from the original), reset loads 9.</li>
+<li>A reasonable priority is rst, then load, then en; the mutants are each swap of that order, and a missing <code>load</code> case.</li>
+<li>For the 8-bit-input adder there is no input that is not tested; for a 16-bit adder with 1,000 random cases, a mutant that breaks only when <code>a == 16'hFFFF &amp;&amp; b == 16'h0001</code> is untouched by random testing with overwhelming probability.</li>
 </ol>
 
 
