@@ -1,0 +1,1344 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A systolic array in Verilog, int8 quantization, KV cache and batching, bandwidth analysis, a Yosys synthesis flow, and a compiler from a model graph to the chip. Open-source tools only.">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../../part01/01-the-flow/">
+      
+      
+        <link rel="next" href="../../part03/03-quantization/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes - Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#2-the-mac-and-number-formats-twos-complement-overflow-and-the-tests-that-found-three-holes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-header__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-nav__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/01-the-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. The Flow: One Circuit Through Four Tools, and a Way to Test the Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#twos-complement-in-one-paragraph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two's complement in one paragraph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-multipliers-rtlmul8v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two multipliers: rtl/mul8.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-mac-rtlmacv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The MAC: rtl/mac.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-answer-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The answer keys
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-testbenches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The testbenches
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running it
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running it">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-the-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing the tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-three-holes-that-the-first-version-had" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The three holes that the first version had
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-simulators-two-kinds-of-unknown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two simulators, two kinds of unknown
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-chapter-does-and-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this chapter does and does not establish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part03/03-quantization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part04/04-systolic-array/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. The Systolic Array: N x N Multiplies Per Cycle, and the Schedule That Makes It Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part05/05-scratchpad-dma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. The Scratchpad, the DMA Engine, and Double Buffering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part06/06-vector-unit-softmax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. The Vector Unit: A Lookup-Table Exponential, a Divider, and Fixed-Point Softmax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part07/07-the-whole-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. GA-2: An Instruction Set, a Sequencer, and the Whole Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part08/08-attention-kv-cache/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Attention and the KV Cache: One Decode Step, From Hidden State to Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part09/09-batching-and-bandwidth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part10/10-synthesis-and-gate-level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. Synthesis, Timing and Gate-Level Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../answers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Answers to the Self-Check Questions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#twos-complement-in-one-paragraph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two's complement in one paragraph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-multipliers-rtlmul8v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two multipliers: rtl/mul8.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-mac-rtlmacv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The MAC: rtl/mac.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-answer-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The answer keys
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-testbenches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The testbenches
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running it
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running it">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-the-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing the tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-three-holes-that-the-first-version-had" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The three holes that the first version had
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-simulators-two-kinds-of-unknown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two simulators, two kinds of unknown
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-chapter-does-and-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this chapter does and does not establish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="2-the-mac-and-number-formats-twos-complement-overflow-and-the-tests-that-found-three-holes">2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes<a class="headerlink" href="#2-the-mac-and-number-formats-twos-complement-overflow-and-the-tests-that-found-three-holes" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand:</strong> how an 8-bit signed number is stored, why the multiply-accumulate (MAC) unit is the atom of every matrix engine, what happens when a sum does not fit (wrap or saturate), and what the same multiplier costs when it is written two different ways. You will also see a test suite that <em>looked</em> complete have three holes, found by breaking the circuit on purpose.</p>
+<p><strong>What you need to know first:</strong> Chapter 1 (the flow: golden model, two simulators, Yosys, mutation).</p>
+<h2 id="twos-complement-in-one-paragraph">Two's complement in one paragraph<a class="headerlink" href="#twos-complement-in-one-paragraph" title="Permanent link">&para;</a></h2>
+<p>An 8-bit signed integer has 256 values, so the range is -128 to +127: one more negative value than positive. The top bit has weight -128 instead of +128; all other bits keep their usual weights. So <code>1000_0000</code> is -128, <code>1111_1111</code> is -1, <code>0111_1111</code> is +127. The asymmetry matters twice in this book: the product -128 x -128 = +16384 is the <em>largest</em> product magnitude (127 x 127 = 16129 is smaller), and Chapter 3 will choose the quantized range -127..127 on purpose, to keep the format symmetric and avoid ever producing -128.</p>
+<p>An 8 x 8 signed product fits in 16 bits. Summing k products needs about 16 + log2(k) bits, so a 32-bit accumulator holds 2^16 worst-case products before it can overflow. That sounds like a lot; the tests below overflow it deliberately, because "rare" is not "impossible" and the hardware has to do <em>something</em> defined.</p>
+<h2 id="two-multipliers-rtlmul8v">Two multipliers: <code>rtl/mul8.v</code><a class="headerlink" href="#two-multipliers-rtlmul8v" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// Chapter 2: two signed 8x8 -&gt; 16 bit multipliers with the same behaviour and different structure.</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// mul8_beh lets the synthesis tool choose the structure (the Verilog operator *); mul8_sa spells out a shift-and-add array: one row per bit of b, each row a shifted copy of a,</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1">// and the sign bit of b (bit 7, worth -128) SUBTRACTS its row. In two&#39;s complement an n-bit number is  -2^(n-1) * bit(n-1) + sum of 2^i * bit(i).</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">module</span><span class="w"> </span><span class="n">mul8_beh</span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">p</span><span class="p">);</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">b</span><span class="p">;</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="k">endmodule</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="k">module</span><span class="w"> </span><span class="n">mul8_sa</span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">p</span><span class="p">);</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">ax</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="p">;</span><span class="w">                       </span><span class="c1">// a sign-extended to the product&#39;s width</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">r0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">[</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">ax</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="mh">0</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">16</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">r1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">[</span><span class="mh">1</span><span class="p">]</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">ax</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">16</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">r2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">[</span><span class="mh">2</span><span class="p">]</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">ax</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="mh">2</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">16</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">r3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">[</span><span class="mh">3</span><span class="p">]</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">ax</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="mh">3</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">16</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">r4</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">[</span><span class="mh">4</span><span class="p">]</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">ax</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="mh">4</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">16</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">r5</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">[</span><span class="mh">5</span><span class="p">]</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">ax</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="mh">5</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">16</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">r6</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">[</span><span class="mh">6</span><span class="p">]</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">ax</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="mh">6</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">16</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">r7</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">[</span><span class="mh">7</span><span class="p">]</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="n">ax</span><span class="w"> </span><span class="o">&lt;&lt;&lt;</span><span class="w"> </span><span class="mh">7</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">16</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span><span class="w">  </span><span class="c1">// the row for the sign bit</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r0</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">r1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">r2</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">r3</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">r4</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">r5</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">r6</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">r7</span><span class="p">;</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p><code>mul8_beh</code> writes <code>a * b</code> and lets the synthesis tool choose the structure. <code>mul8_sa</code> builds it the way you would on paper: eight shifted copies of <code>a</code>, one per bit of <code>b</code>, added together, with the row for the sign bit of <code>b</code> <em>subtracted</em> (that bit has weight -128). Getting that one sign wrong is the classic mistake, and it is one of the mutants below.</p>
+<h2 id="the-mac-rtlmacv">The MAC: <code>rtl/mac.v</code><a class="headerlink" href="#the-mac-rtlmacv" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// Chapter 2: a multiply-accumulate unit, the building block of every matrix engine. Each clock with en = 1 it adds the product a*b to a 32-bit accumulator.</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">//   clr = 1 starts a new sum: the accumulator becomes the product (if en) or zero (if not). rst clears everything.</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1">//   SAT = 0 : the sum wraps around on overflow (what plain 32-bit hardware does).   SAT = 1 : it saturates at the largest or smallest 32-bit value.</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1">// An 8x8 product needs 16 bits and a sum of k products needs 16 + log2(k) bits: 32 bits are enough for 2^16 products of the worst case, so overflow is rare, but it is real, and what to do about it is a design decision.</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">module</span><span class="w"> </span><span class="n">mac</span><span class="w"> </span><span class="p">#(</span><span class="k">parameter</span><span class="w"> </span><span class="n">SAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="n">clk</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">rst</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">clr</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">en</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">acc</span><span class="p">);</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">b</span><span class="p">;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">32</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">wide</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">p</span><span class="p">;</span><span class="w">                                  </span><span class="c1">// 33 bits: the sum cannot overflow this</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">summed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">SAT</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">0</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">wide</span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="o">:</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">                                </span><span class="p">(</span><span class="n">wide</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mh">33</span><span class="p">&#39;</span><span class="n">sd2147483647</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mh">32</span><span class="p">&#39;</span><span class="n">sd2147483647</span><span class="w"> </span><span class="o">:</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">                                </span><span class="p">(</span><span class="n">wide</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="o">-</span><span class="mh">33</span><span class="p">&#39;</span><span class="n">sd2147483648</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="o">-</span><span class="mh">32</span><span class="p">&#39;</span><span class="n">sd2147483648</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">wide</span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">];</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rst</span><span class="p">)</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">32</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">clr</span><span class="p">)</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">en</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">{{</span><span class="mh">16</span><span class="p">{</span><span class="n">p</span><span class="p">[</span><span class="mh">15</span><span class="p">]}},</span><span class="w"> </span><span class="n">p</span><span class="p">}</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">32</span><span class="p">&#39;</span><span class="n">sd0</span><span class="p">;</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">en</span><span class="p">)</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">summed</span><span class="p">;</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="k">endmodule</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="c1">// the saturating version as a module of its own, so that synthesis tools (and chapters) can name it</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="k">module</span><span class="w"> </span><span class="n">mac_sat</span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="n">clk</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">rst</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">clr</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">en</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">acc</span><span class="p">);</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">    </span><span class="n">mac</span><span class="w"> </span><span class="p">#(.</span><span class="n">SAT</span><span class="p">(</span><span class="mh">1</span><span class="p">))</span><span class="w"> </span><span class="n">u</span><span class="p">(.</span><span class="n">clk</span><span class="p">(</span><span class="n">clk</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">rst</span><span class="p">(</span><span class="n">rst</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">clr</span><span class="p">(</span><span class="n">clr</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">en</span><span class="p">(</span><span class="n">en</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">a</span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">b</span><span class="p">(</span><span class="n">b</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">acc</span><span class="p">(</span><span class="n">acc</span><span class="p">));</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>Each clock with <code>en = 1</code> the accumulator gets <code>acc + a*b</code>. The sum is computed in <strong>33 bits</strong>, so the overflow test can look at the true result before it is cut down to 32. Parameter <code>SAT</code> selects the policy: <code>0</code> wraps (what plain 32-bit adders do), <code>1</code> clamps at the 32-bit limits. <code>clr</code> starts a new sum (the accumulator becomes the first product, or zero if <code>en</code> is low), and <code>rst</code> clears everything.</p>
+<h2 id="the-answer-keys">The answer keys<a class="headerlink" href="#the-answer-keys" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="sd">&quot;&quot;&quot;Chapter 2: golden vectors for the 8x8 signed multipliers: every one of the 65,536 input pairs, with the 16-bit two&#39;s-complement product, as 8 hex digits per line: {a[7:0], b[7:0], p[15:0]}.&quot;&quot;&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">import</span> <span class="nn">sys</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">def</span> <span class="nf">s8</span><span class="p">(</span><span class="n">x</span><span class="p">):</span> <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="mi">256</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">128</span> <span class="k">else</span> <span class="n">x</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">256</span><span class="p">):</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">256</span><span class="p">):</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">p</span> <span class="o">=</span> <span class="p">(</span><span class="n">s8</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">*</span> <span class="n">s8</span><span class="p">(</span><span class="n">b</span><span class="p">))</span> <span class="o">&amp;</span> <span class="mh">0xFFFF</span><span class="p">;</span> <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%02x%02x%04x</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="nb">open</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">),</span> <span class="s2">&quot;pairs written to&quot;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="sd">&quot;&quot;&quot;Chapter 2: golden vectors for the MAC unit. A fixed pseudo-random program of clock cycles: directed sequences that reach every corner (the largest product, -128 * -128 = +16384 which does not fit in int8 arithmetic, long runs that overflow 32 bits both upward and downward, clear with and</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="sd">without enable, enable off), then random ones. The FIRST line is the number of rows that follow. Each following line is {repeat, clr, en, a, b, acc_wrap, acc_sat} = 20 + 1 + 1 + 8 + 8 + 32 + 32 = 102 bits, written as 26 hex digits: the same clock cycle applied `repeat` times in a row, followed by the values both units must hold AFTER the last of them (long runs are checked every 32,768 cycles).</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="sd">Usage: mac_gold.py OUTFILE&quot;&quot;&quot;</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="kn">import</span> <span class="nn">random</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">M</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">32</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="k">def</span> <span class="nf">wrap</span><span class="p">(</span><span class="n">x</span><span class="p">):</span> <span class="n">x</span> <span class="o">&amp;=</span> <span class="n">M</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="k">return</span> <span class="n">x</span> <span class="o">-</span> <span class="n">M</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;=</span> <span class="n">M</span> <span class="o">//</span> <span class="mi">2</span> <span class="k">else</span> <span class="n">x</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="k">def</span> <span class="nf">sat</span><span class="p">(</span><span class="n">x</span><span class="p">):</span> <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">31</span><span class="p">),</span> <span class="nb">min</span><span class="p">((</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">31</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">R</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span> <span class="n">rows</span> <span class="o">=</span> <span class="p">[];</span> <span class="n">aw</span> <span class="o">=</span> <span class="n">asat</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="k">def</span> <span class="nf">clock</span><span class="p">(</span><span class="n">clr</span><span class="p">,</span> <span class="n">en</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">rep</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="k">global</span> <span class="n">aw</span><span class="p">,</span> <span class="n">asat</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="n">p</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rep</span><span class="p">):</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        <span class="k">if</span> <span class="n">clr</span> <span class="ow">and</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="n">aw</span> <span class="o">=</span> <span class="n">asat</span> <span class="o">=</span> <span class="p">(</span><span class="n">p</span> <span class="k">if</span> <span class="n">en</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>        <span class="k">elif</span> <span class="n">en</span><span class="p">:</span> <span class="n">aw</span> <span class="o">=</span> <span class="n">wrap</span><span class="p">(</span><span class="n">aw</span> <span class="o">+</span> <span class="n">p</span><span class="p">);</span> <span class="n">asat</span> <span class="o">=</span> <span class="n">sat</span><span class="p">(</span><span class="n">asat</span> <span class="o">+</span> <span class="n">p</span><span class="p">)</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">rep</span><span class="p">,</span> <span class="n">clr</span><span class="p">,</span> <span class="n">en</span><span class="p">,</span> <span class="n">a</span> <span class="o">&amp;</span> <span class="mi">255</span><span class="p">,</span> <span class="n">b</span> <span class="o">&amp;</span> <span class="mi">255</span><span class="p">,</span> <span class="n">aw</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">M</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="n">asat</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">M</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)))</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="n">clock</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>                                                                <span class="c1"># right after reset: the accumulator must be 0 (a unit that resets to the wrong value is caught here)</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="n">clock</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">((</span><span class="o">-</span><span class="mi">128</span><span class="p">,</span> <span class="o">-</span><span class="mi">128</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">128</span><span class="p">,</span> <span class="mi">127</span><span class="p">),</span> <span class="p">(</span><span class="mi">127</span><span class="p">,</span> <span class="mi">127</span><span class="p">),</span> <span class="p">(</span><span class="mi">127</span><span class="p">,</span> <span class="o">-</span><span class="mi">128</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)):</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    <span class="n">clock</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span> <span class="n">clock</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span> <span class="n">clock</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>                     <span class="c1"># a fresh sum, then one more product, then an idle cycle</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">((</span><span class="o">-</span><span class="mi">128</span><span class="p">,</span> <span class="o">-</span><span class="mi">128</span><span class="p">),</span> <span class="p">(</span><span class="mi">127</span><span class="p">,</span> <span class="mi">127</span><span class="p">)):</span>                                          <span class="c1"># overflow upward: 2^31 / 16384 = 131072 products of the largest value</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    <span class="n">clock</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span> <span class="n">clock</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="mi">32768</span><span class="p">)</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="n">clock</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span> <span class="n">clock</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">128</span><span class="p">,</span> <span class="mi">127</span><span class="p">,</span> <span class="mi">32768</span><span class="p">)</span>                                <span class="c1"># overflow downward (-16256 each: it takes 132,105 of them to pass -2^31)</span>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3000</span><span class="p">):</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    <span class="n">clock</span><span class="p">(</span><span class="n">R</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">.1</span><span class="p">,</span> <span class="n">R</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">.85</span><span class="p">,</span> <span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="o">-</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span> <span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="o">-</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">))</span>
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a><span class="nb">open</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%026x</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%026x</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">((</span><span class="n">r</span> <span class="o">&lt;&lt;</span> <span class="mi">82</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">c</span> <span class="o">&lt;&lt;</span> <span class="mi">81</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">e</span> <span class="o">&lt;&lt;</span> <span class="mi">80</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">a</span> <span class="o">&lt;&lt;</span> <span class="mi">72</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">b</span> <span class="o">&lt;&lt;</span> <span class="mi">64</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">w</span> <span class="o">&lt;&lt;</span> <span class="mi">32</span><span class="p">)</span> <span class="o">|</span> <span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">),</span> <span class="s2">&quot;clock cycles written to&quot;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+<p>The multiplier is checked <strong>exhaustively</strong>: 256 x 256 = 65,536 pairs. The MAC has state, so its key is a <em>sequence</em>: each row is a run of cycles with the expected wrapped and saturated accumulator after it. The sequence contains directed corner cases, an initial post-reset check, upward overflow (4 x 32,768 cycles of -128 x -128, i.e. 2^31 total), downward overflow (5 x 32,768 cycles of -128 x 127), and 3,000 random rows. Word 0 of the vector file is the <strong>row count</strong>: Verilator is a two-state simulator and cannot see an "unknown" end marker, which hung the first version of this testbench (the lesson is in the notes below).</p>
+<h2 id="the-testbenches">The testbenches<a class="headerlink" href="#the-testbenches" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// Chapter 2: exhaustive test of both multipliers: all 65,536 input pairs against the answers the Python golden model wrote.</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="no">`timescale</span><span class="w"> </span><span class="mh">1</span><span class="n">ns</span><span class="o">/</span><span class="mh">1</span><span class="n">ps</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">module</span><span class="w"> </span><span class="n">mul8_tb</span><span class="p">;</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">p1</span><span class="p">,</span><span class="w"> </span><span class="n">p2</span><span class="p">;</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="n">mul8_beh</span><span class="w"> </span><span class="n">d1</span><span class="p">(.</span><span class="n">a</span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">b</span><span class="p">(</span><span class="n">b</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">p</span><span class="p">(</span><span class="n">p1</span><span class="p">));</span><span class="w"> </span><span class="n">mul8_sa</span><span class="w"> </span><span class="n">d2</span><span class="p">(.</span><span class="n">a</span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">b</span><span class="p">(</span><span class="n">b</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">p</span><span class="p">(</span><span class="n">p2</span><span class="p">));</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">vec</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="mh">65535</span><span class="p">];</span><span class="w"> </span><span class="k">integer</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">bad1</span><span class="p">,</span><span class="w"> </span><span class="n">bad2</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="k">initial</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="nb">$readmemh</span><span class="p">(</span><span class="s">&quot;out/mul8_vectors.hex&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">vec</span><span class="p">);</span><span class="w"> </span><span class="n">bad1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">bad2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mh">65536</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">            </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="n">i</span><span class="p">];</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">24</span><span class="p">];</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">23</span><span class="o">:</span><span class="mh">16</span><span class="p">];</span><span class="w"> </span><span class="p">#</span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">p1</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">])</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">bad1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bad1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bad1</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">3</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;mul8_beh MISMATCH %0d * %0d = %0d, want %0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">p1</span><span class="p">,</span><span class="w"> </span><span class="n">$signed</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]));</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">p2</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">])</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">bad2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bad2</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bad2</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">3</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;mul8_sa MISMATCH %0d * %0d = %0d, want %0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">p2</span><span class="p">,</span><span class="w"> </span><span class="n">$signed</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]));</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">        </span><span class="k">end</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bad1</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">bad2</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">0</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;PASS: both multipliers match the golden model on all 65536 input pairs&quot;</span><span class="p">);</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;FAIL: mul8_beh %0d, mul8_sa %0d of 65536 pairs differ&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">bad1</span><span class="p">,</span><span class="w"> </span><span class="n">bad2</span><span class="p">);</span><span class="w"> </span><span class="n">$fatal</span><span class="p">(</span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;mul8 failed&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">        </span><span class="nb">$finish</span><span class="p">;</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="k">endmodule</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 2: the MAC unit (wrapping and saturating versions side by side) against the golden clock-by-clock vectors, including runs of up to 32,768 identical cycles that push the accumulator past both ends of the 32-bit range.</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="no">`timescale</span><span class="w"> </span><span class="mh">1</span><span class="n">ns</span><span class="o">/</span><span class="mh">1</span><span class="n">ps</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">module</span><span class="w"> </span><span class="n">mac_tb</span><span class="p">;</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="n">clk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">,</span><span class="w"> </span><span class="n">rst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="n">clr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">,</span><span class="w"> </span><span class="n">en</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">accw</span><span class="p">,</span><span class="w"> </span><span class="n">accs</span><span class="p">;</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="n">mac</span><span class="w"> </span><span class="p">#(.</span><span class="n">SAT</span><span class="p">(</span><span class="mh">0</span><span class="p">))</span><span class="w"> </span><span class="n">dw</span><span class="p">(.</span><span class="n">clk</span><span class="p">(</span><span class="n">clk</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">rst</span><span class="p">(</span><span class="n">rst</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">clr</span><span class="p">(</span><span class="n">clr</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">en</span><span class="p">(</span><span class="n">en</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">a</span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">b</span><span class="p">(</span><span class="n">b</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">acc</span><span class="p">(</span><span class="n">accw</span><span class="p">));</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="n">mac</span><span class="w"> </span><span class="p">#(.</span><span class="n">SAT</span><span class="p">(</span><span class="mh">1</span><span class="p">))</span><span class="w"> </span><span class="n">ds</span><span class="p">(.</span><span class="n">clk</span><span class="p">(</span><span class="n">clk</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">rst</span><span class="p">(</span><span class="n">rst</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">clr</span><span class="p">(</span><span class="n">clr</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">en</span><span class="p">(</span><span class="n">en</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">a</span><span class="p">(</span><span class="n">a</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">b</span><span class="p">(</span><span class="n">b</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">acc</span><span class="p">(</span><span class="n">accs</span><span class="p">));</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">#</span><span class="mh">5</span><span class="w"> </span><span class="n">clk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">~</span><span class="n">clk</span><span class="p">;</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">101</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">vec</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="mh">4095</span><span class="p">];</span><span class="w"> </span><span class="k">integer</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">rep</span><span class="p">,</span><span class="w"> </span><span class="n">badw</span><span class="p">,</span><span class="w"> </span><span class="n">bads</span><span class="p">,</span><span class="w"> </span><span class="n">checks</span><span class="p">,</span><span class="w"> </span><span class="n">nrows</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">101</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="k">initial</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">        </span><span class="nb">$readmemh</span><span class="p">(</span><span class="s">&quot;out/mac_vectors.hex&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">vec</span><span class="p">);</span><span class="w"> </span><span class="n">badw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">bads</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">checks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">        </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">);</span><span class="w"> </span><span class="p">#</span><span class="mh">1</span><span class="w"> </span><span class="n">rst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">        </span><span class="n">nrows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="mh">0</span><span class="p">];</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">nrows</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w">   </span><span class="c1">// word 0 is the row count (a simulator that has only 0 and 1, like Verilator, cannot be asked to find the end of the data by looking for an unknown)</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">            </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="n">i</span><span class="p">];</span><span class="w"> </span><span class="n">rep</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">101</span><span class="o">:</span><span class="mh">82</span><span class="p">];</span><span class="w"> </span><span class="n">clr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">81</span><span class="p">];</span><span class="w"> </span><span class="n">en</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">80</span><span class="p">];</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">79</span><span class="o">:</span><span class="mh">72</span><span class="p">];</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">71</span><span class="o">:</span><span class="mh">64</span><span class="p">];</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">k</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">rep</span><span class="p">;</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">);</span><span class="w"> </span><span class="p">#</span><span class="mh">1</span><span class="w"> </span><span class="n">clr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span><span class="w"> </span><span class="k">end</span><span class="w">   </span><span class="c1">// clr applies to the first cycle of a repeated run only</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">            </span><span class="n">checks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">checks</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">accw</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">63</span><span class="o">:</span><span class="mh">32</span><span class="p">])</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">badw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">badw</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">badw</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">3</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;wrap MISMATCH at row %0d: got %0d want %0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">accw</span><span class="p">,</span><span class="w"> </span><span class="n">$signed</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mh">63</span><span class="o">:</span><span class="mh">32</span><span class="p">]));</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">accs</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">])</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">bads</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bads</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bads</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">3</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;sat MISMATCH at row %0d: got %0d want %0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">accs</span><span class="p">,</span><span class="w"> </span><span class="n">$signed</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]));</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">        </span><span class="k">end</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">badw</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">bads</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">0</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;PASS: wrapping and saturating MACs match the golden model at all %0d checkpoints&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">checks</span><span class="p">);</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;FAIL: wrap %0d, sat %0d checkpoints differ&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">badw</span><span class="p">,</span><span class="w"> </span><span class="n">bads</span><span class="p">);</span><span class="w"> </span><span class="n">$fatal</span><span class="p">(</span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;mac failed&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="w">        </span><span class="nb">$finish</span><span class="p">;</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="k">endmodule</span>
+</code></pre></div>
+<h2 id="running-it">Running it<a class="headerlink" href="#running-it" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="sd">&quot;&quot;&quot;Chapter 2: the multipliers and the MAC unit through the whole flow: golden vectors, two simulators, and Yosys area for the two multiplier styles and the MAC. Usage: ch02_run.py&quot;&quot;&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">subprocess</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)));</span> <span class="kn">import</span> <span class="nn">hw</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="k">def</span> <span class="nf">gold</span><span class="p">(</span><span class="n">script</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span> <span class="k">return</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="n">script</span><span class="p">,</span> <span class="n">out</span><span class="p">],</span> <span class="n">cwd</span><span class="o">=</span><span class="n">hw</span><span class="o">.</span><span class="n">ROOT</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;== 1. the golden models write their vectors&quot;</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="n">gold</span><span class="p">(</span><span class="s2">&quot;model/mul8_gold.py&quot;</span><span class="p">,</span> <span class="s2">&quot;out/mul8_vectors.hex&quot;</span><span class="p">));</span> <span class="nb">print</span><span class="p">(</span><span class="n">gold</span><span class="p">(</span><span class="s2">&quot;model/mac_gold.py&quot;</span><span class="p">,</span> <span class="s2">&quot;out/mac_vectors.hex&quot;</span><span class="p">))</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">F</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;rtl/mul8.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/mac.v&quot;</span><span class="p">]</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="k">for</span> <span class="n">tb</span><span class="p">,</span> <span class="n">top</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;tb/mul8_tb.v&quot;</span><span class="p">,</span> <span class="s2">&quot;mul8_tb&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;tb/mac_tb.v&quot;</span><span class="p">,</span> <span class="s2">&quot;mac_tb&quot;</span><span class="p">)):</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">fn</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;Icarus Verilog&quot;</span><span class="p">,</span> <span class="n">hw</span><span class="o">.</span><span class="n">sim_icarus</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Verilator&quot;</span><span class="p">,</span> <span class="n">hw</span><span class="o">.</span><span class="n">sim_verilator</span><span class="p">)):</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>        <span class="n">rc</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="n">F</span> <span class="o">+</span> <span class="p">[</span><span class="n">tb</span><span class="p">],</span> <span class="n">top</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 2. </span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">);</span> <span class="nb">print</span><span class="p">([</span><span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="k">if</span> <span class="n">l</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">&quot;PASS&quot;</span><span class="p">,</span> <span class="s2">&quot;FAIL&quot;</span><span class="p">,</span> <span class="s2">&quot;MISMATCH&quot;</span><span class="p">,</span> <span class="s2">&quot;mul8&quot;</span><span class="p">,</span> <span class="s2">&quot;wrap&quot;</span><span class="p">,</span> <span class="s2">&quot;sat&quot;</span><span class="p">))][</span><span class="mi">0</span><span class="p">],</span> <span class="sa">f</span><span class="s2">&quot;(exit status </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 3. Yosys: what each multiplier costs&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="n">GATES</span> <span class="o">=</span> <span class="s2">&quot;abc -g AND,NAND,OR,NOR,XOR,XNOR,ANDNOT,ORNOT,MUX; opt_clean; stat&quot;</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="k">for</span> <span class="n">top</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;mul8_beh&quot;</span><span class="p">,</span> <span class="s2">&quot;mul8_sa&quot;</span><span class="p">):</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    <span class="n">g</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">synth_stats</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;synth -flatten -top </span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2">; </span><span class="si">{</span><span class="n">GATES</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">);</span> <span class="n">l</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">synth_stats</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;synth_ice40 -flatten -top </span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2">; stat&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">top</span><span class="si">:</span><span class="s2">9s</span><span class="si">}</span><span class="s2"> generic gates </span><span class="si">{</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">5d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;cells&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="si">:</span><span class="s2">9s</span><span class="si">}</span><span class="s2"> iCE40 cells  </span><span class="si">{</span><span class="n">l</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">5d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="s1">&#39;cells&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="k">for</span> <span class="n">top</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;mac&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;mac_sat&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)):</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>    <span class="n">g</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">synth_stats</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;synth -flatten -top </span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2">; </span><span class="si">{</span><span class="n">GATES</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">);</span> <span class="n">l</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">synth_stats</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;synth_ice40 -flatten -top </span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2">; stat&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">top</span><span class="si">:</span><span class="s2">9s</span><span class="si">}</span><span class="s2"> generic gates </span><span class="si">{</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">5d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;cells&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="si">:</span><span class="s2">9s</span><span class="si">}</span><span class="s2"> iCE40 cells  </span><span class="si">{</span><span class="n">l</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">5d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="s1">&#39;cells&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Output (cloud sandbox -- live-executed; Icarus Verilog 12.0, Verilator 5.020, Yosys 0.33)</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>== 1. the golden models write their vectors
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>65536 pairs written to out/mul8_vectors.hex
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>3039 clock cycles written to out/mac_vectors.hex
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>== 2. mul8_tb in Icarus Verilog
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>PASS: both multipliers match the golden model on all 65536 input pairs (exit status 0)
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>== 2. mul8_tb in Verilator
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>PASS: both multipliers match the golden model on all 65536 input pairs (exit status 0)
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>== 2. mac_tb in Icarus Verilog
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>PASS: wrapping and saturating MACs match the golden model at all 3039 checkpoints (exit status 0)
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>== 2. mac_tb in Verilator
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>PASS: wrapping and saturating MACs match the golden model at all 3039 checkpoints (exit status 0)
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>== 3. Yosys: what each multiplier costs
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>mul8_beh  generic gates   401 {&#39;$_ANDNOT_&#39;: 8, &#39;$_AND_&#39;: 80, &#39;$_MUX_&#39;: 2, &#39;$_NAND_&#39;: 171, &#39;$_NOT_&#39;: 1, &#39;$_ORNOT_&#39;: 1, &#39;$_OR_&#39;: 2, &#39;$_XNOR_&#39;: 8, &#39;$_XOR_&#39;: 128}
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>          iCE40 cells    191 {&#39;SB_CARRY&#39;: 10, &#39;SB_LUT4&#39;: 181}
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>mul8_sa   generic gates   398 {&#39;$_ANDNOT_&#39;: 1, &#39;$_AND_&#39;: 62, &#39;$_MUX_&#39;: 1, &#39;$_NAND_&#39;: 197, &#39;$_NOT_&#39;: 1, &#39;$_ORNOT_&#39;: 1, &#39;$_XNOR_&#39;: 14, &#39;$_XOR_&#39;: 121}
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>          iCE40 cells    192 {&#39;SB_CARRY&#39;: 11, &#39;SB_LUT4&#39;: 181}
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>mac       generic gates   725 {&#39;$_ANDNOT_&#39;: 8, &#39;$_AND_&#39;: 146, &#39;$_MUX_&#39;: 3, &#39;$_NAND_&#39;: 282, &#39;$_NOR_&#39;: 31, &#39;$_NOT_&#39;: 1, &#39;$_ORNOT_&#39;: 5, &#39;$_OR_&#39;: 40, &#39;$_SDFFE_PP0P_&#39;: 32, &#39;$_XNOR_&#39;: 43, &#39;$_XOR_&#39;: 134}
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>          iCE40 cells    322 {&#39;SB_CARRY&#39;: 42, &#39;SB_DFFESR&#39;: 32, &#39;SB_LUT4&#39;: 248}
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>mac_sat   generic gates   753 {&#39;$_ANDNOT_&#39;: 8, &#39;$_AND_&#39;: 147, &#39;$_MUX_&#39;: 2, &#39;$_NAND_&#39;: 261, &#39;$_NOR_&#39;: 8, &#39;$_ORNOT_&#39;: 5, &#39;$_OR_&#39;: 93, &#39;$_SDFFE_PP0P_&#39;: 32, &#39;$_XNOR_&#39;: 67, &#39;$_XOR_&#39;: 130}
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>          iCE40 cells    435 {&#39;SB_CARRY&#39;: 75, &#39;SB_DFFESR&#39;: 32, &#39;SB_LUT4&#39;: 328}
+</code></pre></div>
+<h3 id="reading-it">Reading it<a class="headerlink" href="#reading-it" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Both simulators pass</strong> both testbenches: all 65,536 multiplier pairs and all 3,039 MAC checkpoints.</li>
+<li><strong>The two multipliers cost the same.</strong> 401 vs 398 generic gates; 191 vs 192 iCE40 cells. Writing the shift-and-add by hand bought nothing: the synthesis tool already finds a good structure for <code>*</code>. <em>(Measured by Yosys 0.33 with its default flow; a different tool or a hard multiplier block would change this. That is a result about this flow, not a law.)</em></li>
+<li><strong>The MAC is dominated by the 32 flip-flops and the adder.</strong> 725 gates of which 32 are registers; saturation adds 28 gates (753) and, on the FPGA mapping, 113 cells (322 -&gt; 435) because the comparators and the mux sit on the 33-bit sum.</li>
+<li><strong>Nothing here is timing.</strong> Gate and cell counts say nothing about speed.</li>
+</ul>
+<h2 id="testing-the-tests">Testing the tests<a class="headerlink" href="#testing-the-tests" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="sd">&quot;&quot;&quot;Chapter 2: test the tests. Break the multiplier and the MAC one line at a time; every mutant must be caught. Two mutants are EQUIVALENT (the saturation compare written with &lt;= and &gt;= where &lt; and &gt; were: at exactly the limit the clamp returns the value it already had).&quot;&quot;&quot;</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)));</span> <span class="kn">import</span> <span class="nn">hw</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">V</span> <span class="o">=</span> <span class="s2">&quot;rtl/mul8.v&quot;</span><span class="p">;</span> <span class="n">MAC</span> <span class="o">=</span> <span class="s2">&quot;rtl/mac.v&quot;</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">MUL</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a> <span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="s2">&quot;mul8_sa: the sign row is added instead of subtracted&quot;</span><span class="p">,</span> <span class="s2">&quot;r6 - r7;&quot;</span><span class="p">,</span> <span class="s2">&quot;r6 + r7;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a> <span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="s2">&quot;mul8_sa: row 3 is shifted by 2&quot;</span><span class="p">,</span> <span class="s2">&quot;b[3] ? (ax &lt;&lt;&lt; 3)&quot;</span><span class="p">,</span> <span class="s2">&quot;b[3] ? (ax &lt;&lt;&lt; 2)&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a> <span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="s2">&quot;mul8_sa: row 5 is left out of the sum&quot;</span><span class="p">,</span> <span class="s2">&quot;r4 + r5 + r6&quot;</span><span class="p">,</span> <span class="s2">&quot;r4 + r6&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a> <span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="s2">&quot;mul8_sa: row 5 is selected by bit 6&quot;</span><span class="p">,</span> <span class="s2">&quot;b[5] ? (ax &lt;&lt;&lt; 5)&quot;</span><span class="p">,</span> <span class="s2">&quot;b[6] ? (ax &lt;&lt;&lt; 5)&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a> <span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="s2">&quot;mul8_sa: a is zero-extended instead of sign-extended&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [15:0] ax = a;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [15:0] ax = {8&#39;b0, a};&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a> <span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="s2">&quot;mul8_sa: the sign row ignores the sign bit&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [15:0] r7 = b[7] ?&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [15:0] r7 = b[6] ?&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a> <span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="s2">&quot;mul8_beh: the operands are treated as unsigned&quot;</span><span class="p">,</span> <span class="s2">&quot;assign p = a * b;&quot;</span><span class="p">,</span> <span class="s2">&quot;assign p = $unsigned(a) * $unsigned(b);&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a> <span class="p">(</span><span class="n">V</span><span class="p">,</span> <span class="s2">&quot;mul8_beh: the top bit of the product is lost&quot;</span><span class="p">,</span> <span class="s2">&quot;assign p = a * b;&quot;</span><span class="p">,</span> <span class="s2">&quot;assign p = (a * b) &amp; 16&#39;h7fff;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a><span class="p">]</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="n">MACM</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: the product is subtracted&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [32:0] wide = acc + p;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [32:0] wide = acc - p;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: clr with en loads the product without sign extension&quot;</span><span class="p">,</span> <span class="s2">&quot;acc &lt;= en ? {{16</span><span class="si">{p[15]}</span><span class="s2">}, p} : 32&#39;sd0;&quot;</span><span class="p">,</span> <span class="s2">&quot;acc &lt;= en ? {16&#39;b0, p} : 32&#39;sd0;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: clr with en loads zero&quot;</span><span class="p">,</span> <span class="s2">&quot;acc &lt;= en ? {{16</span><span class="si">{p[15]}</span><span class="s2">}, p} : 32&#39;sd0;&quot;</span><span class="p">,</span> <span class="s2">&quot;acc &lt;= 32&#39;sd0;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: en takes priority over clr, so clr only works when en is 0&quot;</span><span class="p">,</span> <span class="s2">&quot;else if (clr) acc &lt;= en ? {{16</span><span class="si">{p[15]}</span><span class="s2">}, p} : 32&#39;sd0;</span><span class="se">\n</span><span class="s2">        else if (en) acc &lt;= summed;&quot;</span><span class="p">,</span> <span class="s2">&quot;else if (en) acc &lt;= summed;</span><span class="se">\n</span><span class="s2">        else if (clr) acc &lt;= 32&#39;sd0;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: the upper clamp is one too low&quot;</span><span class="p">,</span> <span class="s2">&quot;? 32&#39;sd2147483647 :</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;? 32&#39;sd2147483646 :</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: the lower clamp is one too high&quot;</span><span class="p">,</span> <span class="s2">&quot;? -32&#39;sd2147483648 : wide[31:0];&quot;</span><span class="p">,</span> <span class="s2">&quot;? -32&#39;sd2147483647 : wide[31:0];&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: the SAT parameter is inverted&quot;</span><span class="p">,</span> <span class="s2">&quot;(SAT == 0) ? wide[31:0] :&quot;</span><span class="p">,</span> <span class="s2">&quot;(SAT == 1) ? wide[31:0] :&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: the wrapped sum drops bit 31&quot;</span><span class="p">,</span> <span class="s2">&quot;(SAT == 0) ? wide[31:0] :&quot;</span><span class="p">,</span> <span class="s2">&quot;(SAT == 0) ? {1&#39;b0, wide[30:0]} :&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: reset loads 1&quot;</span><span class="p">,</span> <span class="s2">&quot;if (rst) acc &lt;= 32&#39;sd0;&quot;</span><span class="p">,</span> <span class="s2">&quot;if (rst) acc &lt;= 32&#39;sd1;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: en is ignored&quot;</span><span class="p">,</span> <span class="s2">&quot;else if (en) acc &lt;= summed;&quot;</span><span class="p">,</span> <span class="s2">&quot;else acc &lt;= summed;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: the sum is only 32 bits wide, so overflow cannot be seen&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [32:0] wide = acc + p;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [31:0] wide32 = acc + p; wire signed [32:0] wide = wide32;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;mac: the accumulator is 24 bits (a narrower register)&quot;</span><span class="p">,</span> <span class="s2">&quot;output reg signed [31:0] acc);</span><span class="se">\n</span><span class="s2">    wire signed [15:0] p&quot;</span><span class="p">,</span> <span class="s2">&quot;output reg signed [31:0] acc);</span><span class="se">\n</span><span class="s2">    wire signed [15:0] p&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="p">]</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="n">MACM</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">MACM</span> <span class="k">if</span> <span class="s2">&quot;24 bits&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">m</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="n">EQUIV</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;EQUIVALENT: the upper clamp triggers at the limit itself (&gt;=)&quot;</span><span class="p">,</span> <span class="s2">&quot;(wide &gt; 33&#39;sd2147483647)&quot;</span><span class="p">,</span> <span class="s2">&quot;(wide &gt;= 33&#39;sd2147483647)&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a> <span class="p">(</span><span class="n">MAC</span><span class="p">,</span> <span class="s2">&quot;EQUIVALENT: the lower clamp triggers at the limit itself (&lt;=)&quot;</span><span class="p">,</span> <span class="s2">&quot;(wide &lt; -33&#39;sd2147483648)&quot;</span><span class="p">,</span> <span class="s2">&quot;(wide &lt;= -33&#39;sd2147483648)&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a><span class="p">]</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="n">F</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;rtl/mul8.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/mac.v&quot;</span><span class="p">]</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;NOTE: this script deliberately breaks copies of the RTL. &#39;caught&#39; lines are EXPECTED: they show the testbenches can detect the mistake.&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a><span class="n">ok</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a><span class="n">c</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">l</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="n">MUL</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="s2">&quot;mul8_tb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;tb/mul8_tb.v&quot;</span><span class="p">]);</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">l</span><span class="p">));</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">multipliers: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> broken circuits caught&quot;</span><span class="p">);</span> <span class="n">ok</span> <span class="o">&amp;=</span> <span class="n">c</span> <span class="o">==</span> <span class="n">n</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="n">c</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">l</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="n">MACM</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="s2">&quot;mac_tb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;tb/mac_tb.v&quot;</span><span class="p">]);</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">l</span><span class="p">));</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">MAC: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> broken circuits caught&quot;</span><span class="p">);</span> <span class="n">ok</span> <span class="o">&amp;=</span> <span class="n">c</span> <span class="o">==</span> <span class="n">n</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="n">c</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">l</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="n">EQUIV</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="s2">&quot;mac_tb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;tb/mac_tb.v&quot;</span><span class="p">]);</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Two changes that look like bugs and are not:&quot;</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">l</span><span class="p">));</span> <span class="n">ok</span> <span class="o">&amp;=</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">0</span>
+<a id="__codelineno-8-41" name="__codelineno-8-41" href="#__codelineno-8-41"></a><span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">ok</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Output (cloud sandbox -- live-executed)</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>NOTE: this script deliberately breaks copies of the RTL. &#39;caught&#39; lines are EXPECTED: they show the testbenches can detect the mistake.
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>mul8_sa: the sign row is added instead of subtracted: caught
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>mul8_sa: row 3 is shifted by 2: caught
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>mul8_sa: row 5 is left out of the sum: caught
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>mul8_sa: row 5 is selected by bit 6: caught
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>mul8_sa: a is zero-extended instead of sign-extended: caught
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>mul8_sa: the sign row ignores the sign bit: caught
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>mul8_beh: the operands are treated as unsigned: caught
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>mul8_beh: the top bit of the product is lost: caught
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>multipliers: 8 of 8 broken circuits caught
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>mac: the product is subtracted: caught
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>mac: clr with en loads the product without sign extension: caught
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>mac: clr with en loads zero: caught
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>mac: en takes priority over clr, so clr only works when en is 0: caught
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>mac: the upper clamp is one too low: caught
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>mac: the lower clamp is one too high: caught
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>mac: the SAT parameter is inverted: caught
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>mac: the wrapped sum drops bit 31: caught
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>mac: reset loads 1: caught
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>mac: en is ignored: caught
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>mac: the sum is only 32 bits wide, so overflow cannot be seen: caught
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>MAC: 11 of 11 broken circuits caught
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>Two changes that look like bugs and are not:
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>EQUIVALENT: the upper clamp triggers at the limit itself (&gt;=): NOT CAUGHT
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>EQUIVALENT: the lower clamp triggers at the limit itself (&lt;=): NOT CAUGHT
+</code></pre></div>
+<p>All 8 multiplier mutants and all 11 MAC mutants are caught. Two survive, and both are <strong>equivalent mutants</strong>: the clamp tests <code>wide &gt; 2^31-1</code>; changing it to <code>&gt;=</code> makes the circuit clamp when the sum equals 2^31-1 exactly, but clamping that value returns 2^31-1, the same number. The lower clamp is symmetric. Neither is a gap.</p>
+<h3 id="the-three-holes-that-the-first-version-had">The three holes that the first version had<a class="headerlink" href="#the-three-holes-that-the-first-version-had" title="Permanent link">&para;</a></h3>
+<p>The tests above are the <em>second</em> version. The first one passed all its own checks and still let mutants through, each teaching something:</p>
+<ol>
+<li><strong>The downward overflow run was too short.</strong> The first version drove the accumulator down for fewer cycles than it takes to reach -2^31, so the lower clamp was never exercised and "the lower clamp is one too high" survived. The fix is arithmetic, not luck: -128 x 127 = -16256 per cycle needs 2^31 / 16256 ~ 132,100 cycles, so the test runs 5 x 32,768 = 163,840.</li>
+<li><strong>No check straight after reset.</strong> "Reset loads 1" survived until a row was added that looks at the accumulator before any <code>en</code>.</li>
+<li><strong>One mutant was not a mutant.</strong> A "priority" mutant had been written as a rewrite that, on inspection, behaved identically. It was replaced by a true priority swap (<code>en</code> beats <code>clr</code>), which the tests do catch. Reading a survivor before trying to kill it is the discipline from Chapter 1.</li>
+</ol>
+<h2 id="two-simulators-two-kinds-of-unknown">Two simulators, two kinds of unknown<a class="headerlink" href="#two-simulators-two-kinds-of-unknown" title="Permanent link">&para;</a></h2>
+<p>Icarus is four-state (0, 1, <code>x</code>, <code>z</code>); Verilator is two-state. A testbench that ends its loop on an <code>x</code> sentinel works in Icarus and <strong>hangs in Verilator</strong> (the author watched it use 98% CPU for six minutes before finding out). The book's rule since this chapter: no sentinel values, put the count in word 0. This is also the reason to run every test in both tools: each one hides a different kind of mistake.</p>
+<h2 id="what-this-chapter-does-and-does-not-establish">What this chapter does and does not establish<a class="headerlink" href="#what-this-chapter-does-and-does-not-establish" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>The MAC is correct against the golden model</strong> on the vectors used: exhaustive for the multiplier, directed plus 3,000 random sequences for the MAC. Not exhaustive for the MAC (the state space is 2^32 x inputs).</li>
+<li><strong>The gate counts compare flows, not chips.</strong> "Same cost" is a finding about Yosys's default synthesis.</li>
+<li><strong>Overflow policy is a decision, not a fact.</strong> Wrapping is cheapest and silently wrong; saturating costs gates and is wrong more gracefully. Chapter 3 will make the larger decision, which is to keep the accumulator wide enough that a real model should never need either.</li>
+</ul>
+<h2 id="chapter-summary">Chapter summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>Signed 8-bit numbers range -128..127. A MAC multiplies two of them and adds to a 32-bit accumulator that can overflow after 2^16 worst-case products; the unit can wrap or saturate. The behavioural and hand-built multipliers cost the same in Yosys. The tests were exhaustive for the multiplier, sequence-based for the MAC, and mutation found three holes in the first version.</p>
+<h2 id="self-check-questions">Self-check questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Why is the product -128 x -128 the worst case for the accumulator, and how many such products does it take to overflow 32 bits signed?</li>
+<li>In <code>mul8_sa</code>, why must the row for bit 7 of <code>b</code> be subtracted?</li>
+<li>Why does the MAC compute its sum in 33 bits instead of 32?</li>
+<li>The two multiplier styles cost 401 and 398 gates. What can you conclude, and what can you not?</li>
+<li>A testbench ends its loop when the expected value is <code>x</code>. Why does it work in Icarus and hang in Verilator?</li>
+<li>The mutant "the upper clamp triggers at the limit itself (<code>&gt;=</code>)" survives. Is the test weak?</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

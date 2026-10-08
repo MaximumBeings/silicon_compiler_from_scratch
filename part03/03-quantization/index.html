@@ -1,0 +1,1344 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A systolic array in Verilog, int8 quantization, KV cache and batching, bandwidth analysis, a Yosys synthesis flow, and a compiler from a model graph to the chip. Open-source tools only.">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../../part02/02-mac-and-number-formats/">
+      
+      
+        <link rel="next" href="../../part04/04-systolic-array/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs - Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#3-quantization-int8-numbers-the-requantizer-and-what-accuracy-it-costs" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-header__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-nav__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/01-the-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. The Flow: One Circuit Through Four Tools, and a Way to Test the Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part02/02-mac-and-number-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-8-bits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why 8 bits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-scheme-symmetric-int8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The scheme: symmetric int8
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-reference-modelquantpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The reference: model/quant.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-circuit-rtlrequantv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The circuit: rtl/requant.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-answer-key-and-the-testbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The answer key and the testbench
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-the-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-much-accuracy-does-int8-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How much accuracy does int8 cost?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How much accuracy does int8 cost?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-chapter-does-and-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this chapter does and does not establish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part04/04-systolic-array/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. The Systolic Array: N x N Multiplies Per Cycle, and the Schedule That Makes It Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part05/05-scratchpad-dma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. The Scratchpad, the DMA Engine, and Double Buffering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part06/06-vector-unit-softmax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. The Vector Unit: A Lookup-Table Exponential, a Divider, and Fixed-Point Softmax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part07/07-the-whole-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. GA-2: An Instruction Set, a Sequencer, and the Whole Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part08/08-attention-kv-cache/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Attention and the KV Cache: One Decode Step, From Hidden State to Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part09/09-batching-and-bandwidth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part10/10-synthesis-and-gate-level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. Synthesis, Timing and Gate-Level Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../answers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Answers to the Self-Check Questions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-8-bits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why 8 bits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-scheme-symmetric-int8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The scheme: symmetric int8
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-reference-modelquantpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The reference: model/quant.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-circuit-rtlrequantv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The circuit: rtl/requant.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-answer-key-and-the-testbench" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The answer key and the testbench
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-the-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-much-accuracy-does-int8-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How much accuracy does int8 cost?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How much accuracy does int8 cost?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-chapter-does-and-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this chapter does and does not establish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="3-quantization-int8-numbers-the-requantizer-and-what-accuracy-it-costs">3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs<a class="headerlink" href="#3-quantization-int8-numbers-the-requantizer-and-what-accuracy-it-costs" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand:</strong> why inference chips compute in 8-bit integers, how a real number becomes an int8 (and why the range is -127..127), how the 32-bit accumulator of a matrix product is brought back to 8 bits by a circuit called the <strong>requantizer</strong>, and how much accuracy all this costs, measured, including the case where one outlier ruins everything else.</p>
+<p><strong>What you need to know first:</strong> Chapter 2 (two's complement, the MAC, overflow).</p>
+<h2 id="why-8-bits">Why 8 bits<a class="headerlink" href="#why-8-bits" title="Permanent link">&para;</a></h2>
+<p>Every weight of a model has to be read from memory for every token generated, and memory bandwidth, not arithmetic, usually limits inference (Chapter 9 measures this). An int8 weight is one byte: a quarter of fp32, half of fp16. An int8 multiplier is also far smaller than a floating-point one (Chapter 2: about 400 gates). So the chip stores and multiplies small integers, accumulates in 32 bits, and converts back to 8 bits between layers.</p>
+<h2 id="the-scheme-symmetric-int8">The scheme: symmetric int8<a class="headerlink" href="#the-scheme-symmetric-int8" title="Permanent link">&para;</a></h2>
+<p>A real number <code>x</code> is stored as an integer <code>q</code> with <code>x ~ q * scale</code>.</p>
+<ul>
+<li><code>scale = max|x| / 127</code>, so the largest value maps to +-127.</li>
+<li><code>q = clamp(round(x / scale), -127, 127)</code>. The value -128 is <strong>never used</strong> (Chapter 2): the range is symmetric, so negating a quantized value cannot overflow and a zero-centred distribution loses nothing.</li>
+<li>Rounding is <strong>to nearest, ties away from zero</strong>, done on integers (no floating point in the reference), so every implementation agrees on the half-way cases.</li>
+</ul>
+<p>A matrix product of two int8 tensors accumulates exactly in int32 (<code>acc = sum a_q * b_q</code>), and <code>acc</code> represents the real value <code>acc * scale_a * scale_b</code>. To feed the next layer it must become an int8 with an output scale <code>s_out</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>q_out = round( acc * M ),   M = scale_a * scale_b / s_out     (a real number, typically 2^-16 .. 1)
+</code></pre></div>
+<p>Hardware does not multiply by a real number. It uses an integer <strong>mantissa</strong> <code>m</code> (24 bits, 2^23 &lt;= m &lt; 2^24) and a <strong>shift</strong> <code>s</code>: <code>M ~ m / 2^s</code>, so <code>q_out = clamp(round(acc * m / 2^s))</code>. The relative error of that approximation is at most 2^-24 (measured below).</p>
+<h2 id="the-reference-modelquantpy">The reference: <code>model/quant.py</code><a class="headerlink" href="#the-reference-modelquantpy" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="sd">&quot;&quot;&quot;Chapter 3: the quantization arithmetic, in plain Python integers, exactly as the hardware must do it, plus the helpers that choose scales and measure error.</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="sd">THE SCHEME (symmetric int8, the one most inference chips use): a real number x is stored as an integer q in [-127, 127] with x ~ q * scale. The value -128 is never used, so that negating a value can never overflow and the range is symmetric about zero.</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="sd">  quantize(x, scale)      q = clamp(round_half_away(x / scale), -127, 127)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="sd">  scale from data         scale = max|x| / 127      (per tensor, or per row/channel)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="sd">A matrix product of two int8 tensors accumulates in int32:   acc = sum a_q * b_q    and represents the real value  acc * (scale_a * scale_b).</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="sd">REQUANTIZATION turns that int32 accumulator back into an int8 for the next layer, with output scale s_out:   q_out = round_half_away(acc * M),   M = scale_a * scale_b / s_out</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="sd">M is a real number, usually between 2^-16 and 1. Hardware does not multiply by a real number; it multiplies by an integer MANTISSA m (24 bits, 2^23 &lt;= m &lt; 2^24) and shifts right by s:   M ~ m / 2^s,  q_out = clamp(round_half_away(acc * m / 2^s), -127, 127), optionally clamped at 0 from below (a fused ReLU).</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="kn">import</span> <span class="nn">math</span><span class="o">,</span> <span class="nn">random</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">QMIN</span><span class="p">,</span> <span class="n">QMAX</span> <span class="o">=</span> <span class="o">-</span><span class="mi">127</span><span class="p">,</span> <span class="mi">127</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="k">def</span> <span class="nf">round_half_away</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">den</span><span class="p">):</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;round(num / den) to the nearest integer, ties away from zero, for integers (den &gt; 0), with no floating point.&quot;&quot;&quot;</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="n">q</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">num</span><span class="p">),</span> <span class="n">den</span><span class="p">);</span> <span class="n">q</span> <span class="o">+=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">r</span> <span class="o">&gt;=</span> <span class="n">den</span><span class="p">);</span> <span class="k">return</span> <span class="n">q</span> <span class="k">if</span> <span class="n">num</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="n">q</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="k">def</span> <span class="nf">clamp</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">):</span> <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">lo</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">hi</span><span class="p">,</span> <span class="n">v</span><span class="p">))</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="k">def</span> <span class="nf">quantize</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">scale</span><span class="p">):</span> <span class="k">return</span> <span class="n">clamp</span><span class="p">(</span><span class="n">round_half_away_float</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">scale</span><span class="p">),</span> <span class="n">QMIN</span><span class="p">,</span> <span class="n">QMAX</span><span class="p">)</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="k">def</span> <span class="nf">round_half_away_float</span><span class="p">(</span><span class="n">v</span><span class="p">):</span> <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="k">def</span> <span class="nf">scale_for</span><span class="p">(</span><span class="n">values</span><span class="p">):</span> <span class="n">m</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">);</span> <span class="k">return</span> <span class="n">m</span> <span class="o">/</span> <span class="n">QMAX</span> <span class="k">if</span> <span class="n">m</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">1.0</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="k">def</span> <span class="nf">mantissa_shift</span><span class="p">(</span><span class="n">M</span><span class="p">):</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Represent a positive real M as (m, s) with 2^23 &lt;= m &lt; 2^24 and M ~ m / 2^s (s in 16..47 for the ranges we care about).&quot;&quot;&quot;</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="k">assert</span> <span class="n">M</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="n">s</span> <span class="o">=</span> <span class="mi">23</span> <span class="o">-</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">M</span><span class="p">));</span> <span class="n">m</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">M</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">s</span><span class="p">))</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    <span class="k">if</span> <span class="n">m</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">:</span> <span class="n">m</span> <span class="o">&gt;&gt;=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">s</span> <span class="o">-=</span> <span class="mi">1</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="k">assert</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">23</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">m</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">);</span> <span class="k">return</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="k">def</span> <span class="nf">requant</span><span class="p">(</span><span class="n">acc</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">relu</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;The hardware&#39;s function: the int32 accumulator, a 24-bit mantissa and a shift, to an int8 in [-127, 127] (or [0, 127] with relu).&quot;&quot;&quot;</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="n">q</span> <span class="o">=</span> <span class="n">round_half_away</span><span class="p">(</span><span class="n">acc</span> <span class="o">*</span> <span class="n">m</span><span class="p">,</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">s</span><span class="p">);</span> <span class="k">return</span> <span class="n">clamp</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">relu</span> <span class="k">else</span> <span class="n">QMIN</span><span class="p">,</span> <span class="n">QMAX</span><span class="p">)</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="k">def</span> <span class="nf">matmul_int8</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A: n x k, B: k x p, int8 -&gt; n x p int32 (exact).&quot;&quot;&quot;</span>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    <span class="k">return</span> <span class="p">[[</span><span class="nb">sum</span><span class="p">(</span><span class="n">A</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">B</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">B</span><span class="p">)))</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">B</span><span class="p">[</span><span class="mi">0</span><span class="p">]))]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">A</span><span class="p">))]</span>
+</code></pre></div>
+<p><code>round_half_away</code> works on integers only (<code>divmod</code>, then compare twice the remainder with the denominator). <code>requant</code> is the function the circuit has to match, bit for bit.</p>
+<h2 id="the-circuit-rtlrequantv">The circuit: <code>rtl/requant.v</code><a class="headerlink" href="#the-circuit-rtlrequantv" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 3: the requantizer. It turns the int32 accumulator of a matrix product back into an int8 for the next layer:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">//    q = clamp( round_half_away( acc * m / 2^s ), -127, 127 )          (clamped at 0 from below when relu = 1)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">// m is a 24-bit mantissa, s a shift of 0 to 63. Rounding is to nearest with ties away from zero, done on the magnitude so that the result is symmetric: requant(-x) = -requant(x).</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// Combinational: one 32 x 24 multiplier, one adder for the rounding constant, a shifter and a clamp.</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">module</span><span class="w"> </span><span class="n">requant</span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">acc</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="mh">23</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="mh">5</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">s</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">relu</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">q</span><span class="p">);</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="n">neg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">acc</span><span class="p">[</span><span class="mh">31</span><span class="p">];</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">mag</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">neg</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span><span class="o">~</span><span class="n">acc</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">32</span><span class="mi">&#39;d1</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">acc</span><span class="p">;</span><span class="w">                     </span><span class="c1">// |acc| (2^31 fits in 32 unsigned bits)</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">55</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">prod</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mag</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">m</span><span class="p">;</span><span class="w">                                       </span><span class="c1">// up to 2^31 * 2^24 = 2^55</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">55</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">half</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">6</span><span class="mi">&#39;d0</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mh">56</span><span class="mi">&#39;d0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="mh">56</span><span class="mi">&#39;d1</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mh">6</span><span class="mi">&#39;d1</span><span class="p">));</span><span class="w">   </span><span class="c1">// 2^(s-1): half a unit in the last place kept</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">56</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">,</span><span class="w"> </span><span class="n">prod</span><span class="p">}</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">{</span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">,</span><span class="w"> </span><span class="n">half</span><span class="p">};</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">56</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">shifted</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">s</span><span class="p">;</span><span class="w">                                   </span><span class="c1">// |result| before the clamp</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">56</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">limit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">57</span><span class="mi">&#39;d127</span><span class="p">;</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">6</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">mag_q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">shifted</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">limit</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mh">7</span><span class="mi">&#39;d127</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">shifted</span><span class="p">[</span><span class="mh">6</span><span class="o">:</span><span class="mh">0</span><span class="p">];</span><span class="w">     </span><span class="c1">// clamp the magnitude at 127</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">signed_q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">neg</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="o">-</span><span class="n">$signed</span><span class="p">({</span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">,</span><span class="w"> </span><span class="n">mag_q</span><span class="p">})</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">$signed</span><span class="p">({</span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">,</span><span class="w"> </span><span class="n">mag_q</span><span class="p">});</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">relu</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">signed_q</span><span class="p">[</span><span class="mh">7</span><span class="p">])</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mh">8</span><span class="p">&#39;</span><span class="n">sd0</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">signed_q</span><span class="p">;</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>It is combinational (no clock): take the magnitude of <code>acc</code>, multiply by <code>m</code> (32 x 24 bits gives up to 56 bits), add the rounding constant <code>2^(s-1)</code>, shift right by <code>s</code>, clamp the magnitude to 127, restore the sign, and optionally clamp negatives to zero (a fused ReLU). Rounding the <strong>magnitude</strong> gives ties-away-from-zero for both signs, and makes <code>requant(-x) = -requant(x)</code>. A <code>2^31</code> magnitude fits in 32 unsigned bits, so the most negative accumulator is not special.</p>
+<h2 id="the-answer-key-and-the-testbench">The answer key and the testbench<a class="headerlink" href="#the-answer-key-and-the-testbench" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="sd">&quot;&quot;&quot;Chapter 3: golden vectors for the requantizer. Directed cases (the accumulator at both ends of int32, exact ties at .5 in both signs, mantissas at both ends, shifts at both ends, results exactly at the clamp limits, zero) and random ones.</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="sd">The FIRST line is the number of cases that follow. Each following line: {acc[31:0], m[23:0], s[5:0], relu, q[7:0]} = 32 + 24 + 6 + 1 + 8 = 71 bits as 18 hex digits (the top digit holds 3 bits). Usage: requant_gold.py OUTFILE [COUNT]&quot;&quot;&quot;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">random</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)));</span> <span class="kn">from</span> <span class="nn">quant</span> <span class="kn">import</span> <span class="n">requant</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="mi">200000</span><span class="p">;</span> <span class="n">R</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span> <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">acc</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">relu</span><span class="p">):</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">q</span> <span class="o">=</span> <span class="n">requant</span><span class="p">(</span><span class="n">acc</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="nb">bool</span><span class="p">(</span><span class="n">relu</span><span class="p">));</span> <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(((</span><span class="n">acc</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFFFF</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="mi">39</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">m</span> <span class="o">&lt;&lt;</span> <span class="mi">15</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">s</span> <span class="o">&lt;&lt;</span> <span class="mi">9</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">relu</span> <span class="o">&lt;&lt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">q</span> <span class="o">&amp;</span> <span class="mi">255</span><span class="p">))</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">EX</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">127</span><span class="p">,</span> <span class="o">-</span><span class="mi">127</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="o">-</span><span class="mi">128</span><span class="p">,</span> <span class="mi">2</span><span class="o">**</span><span class="mi">31</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">,</span> <span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">,</span> <span class="mi">12345</span><span class="p">,</span> <span class="o">-</span><span class="mi">12345</span><span class="p">,</span> <span class="mi">99999999</span><span class="p">,</span> <span class="o">-</span><span class="mi">99999999</span><span class="p">]</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="k">for</span> <span class="n">acc</span> <span class="ow">in</span> <span class="n">EX</span><span class="p">:</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">23</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">12345678</span><span class="p">,</span> <span class="mh">0xAAAAAA</span><span class="p">):</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">31</span><span class="p">,</span> <span class="mi">39</span><span class="p">,</span> <span class="mi">47</span><span class="p">,</span> <span class="mi">63</span><span class="p">):</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>            <span class="k">for</span> <span class="n">relu</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span> <span class="n">add</span><span class="p">(</span><span class="n">acc</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">relu</span><span class="p">)</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">):</span>                                    <span class="c1"># exact ties: acc * m = (2k + 1) * 2^(s-1), so the true quotient is k + 1/2</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">63</span><span class="p">,</span> <span class="mi">126</span><span class="p">,</span> <span class="mi">127</span><span class="p">,</span> <span class="mi">200</span><span class="p">):</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        <span class="k">if</span> <span class="n">s</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>            <span class="n">m</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">23</span><span class="p">;</span> <span class="n">prod</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">s</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>            <span class="k">if</span> <span class="n">prod</span> <span class="o">%</span> <span class="n">m</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>                <span class="n">acc</span> <span class="o">=</span> <span class="n">prod</span> <span class="o">//</span> <span class="n">m</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>                <span class="k">if</span> <span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span> <span class="o">&lt;=</span> <span class="n">acc</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">:</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>                    <span class="k">for</span> <span class="n">sg</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>                        <span class="k">for</span> <span class="n">relu</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span> <span class="n">add</span><span class="p">(</span><span class="n">sg</span> <span class="o">*</span> <span class="n">acc</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">relu</span><span class="p">)</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">count</span><span class="p">):</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>    <span class="n">s</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">);</span> <span class="n">m</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">23</span><span class="p">,</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">24</span><span class="p">);</span> <span class="n">acc</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">,</span> <span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">),</span> <span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="p">,</span> <span class="mi">2</span><span class="o">**</span><span class="mi">20</span><span class="p">),</span> <span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="o">-</span><span class="mi">300</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">16</span><span class="p">))])</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    <span class="n">add</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">acc</span><span class="p">)),</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a><span class="nb">open</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%018x</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%018x</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">),</span> <span class="s2">&quot;requantization cases written to&quot;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// Chapter 3: the requantizer against the golden vectors (directed corner cases and 200,000 random ones).</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="no">`timescale</span><span class="w"> </span><span class="mh">1</span><span class="n">ns</span><span class="o">/</span><span class="mh">1</span><span class="n">ps</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">module</span><span class="w"> </span><span class="n">requant_tb</span><span class="p">;</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">acc</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">23</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">m</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">5</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">s</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="n">relu</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="k">signed</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">q</span><span class="p">;</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="n">requant</span><span class="w"> </span><span class="n">dut</span><span class="p">(.</span><span class="n">acc</span><span class="p">(</span><span class="n">acc</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">m</span><span class="p">(</span><span class="n">m</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">s</span><span class="p">(</span><span class="n">s</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">relu</span><span class="p">(</span><span class="n">relu</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">q</span><span class="p">(</span><span class="n">q</span><span class="p">));</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">71</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">vec</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="mh">1048575</span><span class="p">];</span><span class="w"> </span><span class="k">integer</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">bad</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">nrows</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">71</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="k">initial</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="nb">$readmemh</span><span class="p">(</span><span class="s">&quot;out/requant_vectors.hex&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">vec</span><span class="p">);</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">        </span><span class="n">nrows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="mh">0</span><span class="p">];</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">nrows</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">            </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="n">i</span><span class="p">];</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">70</span><span class="o">:</span><span class="mh">39</span><span class="p">];</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">38</span><span class="o">:</span><span class="mh">15</span><span class="p">];</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">14</span><span class="o">:</span><span class="mh">9</span><span class="p">];</span><span class="w"> </span><span class="n">relu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">8</span><span class="p">];</span><span class="w"> </span><span class="p">#</span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">;</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">q</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">])</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bad</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">5</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;MISMATCH acc=%0d m=%0d s=%0d relu=%0d: got %0d want %0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">acc</span><span class="p">,</span><span class="w"> </span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">,</span><span class="w"> </span><span class="n">relu</span><span class="p">,</span><span class="w"> </span><span class="n">q</span><span class="p">,</span><span class="w"> </span><span class="n">$signed</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]));</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">        </span><span class="k">end</span>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bad</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">0</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;PASS: the requantizer matches the golden model on all %0d cases&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="p">);</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;FAIL: %0d of %0d cases differ&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">bad</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="p">);</span><span class="w"> </span><span class="n">$fatal</span><span class="p">(</span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;requant failed&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">        </span><span class="nb">$finish</span><span class="p">;</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>The key has 201,808 cases: the accumulator at both ends of int32, mantissas at both ends, shifts 0 and 63, <strong>exact ties</strong> at every shift (built so that <code>acc * m</code> is exactly <code>(2k+1) * 2^(s-1)</code>), results sitting exactly at the clamp limit, and 200,000 random ones, with two thirds of them having small accumulators (below about 2^20 or a few hundred times a power of two) so that the interesting rounding region is exercised.</p>
+<h2 id="running-it">Running it<a class="headerlink" href="#running-it" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="sd">&quot;&quot;&quot;Chapter 3: the requantizer through the flow: golden vectors, two simulators, Yosys cost. Usage: ch03_run.py&quot;&quot;&quot;</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">subprocess</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)));</span> <span class="kn">import</span> <span class="nn">hw</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;== 1. the golden model writes its vectors&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="s2">&quot;model/requant_gold.py&quot;</span><span class="p">,</span> <span class="s2">&quot;out/requant_vectors.hex&quot;</span><span class="p">],</span> <span class="n">cwd</span><span class="o">=</span><span class="n">hw</span><span class="o">.</span><span class="n">ROOT</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">F</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;rtl/requant.v&quot;</span><span class="p">,</span> <span class="s2">&quot;tb/requant_tb.v&quot;</span><span class="p">]</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">fn</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;Icarus Verilog&quot;</span><span class="p">,</span> <span class="n">hw</span><span class="o">.</span><span class="n">sim_icarus</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Verilator&quot;</span><span class="p">,</span> <span class="n">hw</span><span class="o">.</span><span class="n">sim_verilator</span><span class="p">)):</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">rc</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="s2">&quot;requant_tb&quot;</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 2. requant_tb in </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="nb">print</span><span class="p">(([</span><span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="k">if</span> <span class="n">l</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">&quot;PASS&quot;</span><span class="p">,</span> <span class="s2">&quot;FAIL&quot;</span><span class="p">,</span> <span class="s2">&quot;MISMATCH&quot;</span><span class="p">))]</span> <span class="ow">or</span> <span class="n">out</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="o">-</span><span class="mi">3</span><span class="p">:])[</span><span class="mi">0</span><span class="p">],</span> <span class="sa">f</span><span class="s2">&quot;(exit status </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 3. Yosys: what the requantizer costs&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="n">GATES</span> <span class="o">=</span> <span class="s2">&quot;abc -g AND,NAND,OR,NOR,XOR,XNOR,ANDNOT,ORNOT,MUX; opt_clean; stat&quot;</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="n">g</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">synth_stats</span><span class="p">([</span><span class="s2">&quot;rtl/requant.v&quot;</span><span class="p">],</span> <span class="s2">&quot;requant&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;synth -flatten -top requant; </span><span class="si">{</span><span class="n">GATES</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">);</span> <span class="n">l</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">synth_stats</span><span class="p">([</span><span class="s2">&quot;rtl/requant.v&quot;</span><span class="p">],</span> <span class="s2">&quot;requant&quot;</span><span class="p">,</span> <span class="s2">&quot;synth_ice40 -flatten -top requant; stat&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;requant   generic gates </span><span class="si">{</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">5d</span><span class="si">}</span><span class="se">\n</span><span class="s2">          iCE40 cells   </span><span class="si">{</span><span class="n">l</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">5d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="s1">&#39;cells&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Output (cloud sandbox -- live-executed; Icarus Verilog 12.0, Verilator 5.020, Yosys 0.33)</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>== 1. the golden model writes its vectors
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>201808 requantization cases written to out/requant_vectors.hex
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>== 2. requant_tb in Icarus Verilog
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>PASS: the requantizer matches the golden model on all 201808 cases (exit status 0)
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>== 2. requant_tb in Verilator
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>PASS: the requantizer matches the golden model on all 201808 cases (exit status 0)
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>== 3. Yosys: what the requantizer costs
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>requant   generic gates  5322
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>          iCE40 cells    2777 {&#39;SB_CARRY&#39;: 138, &#39;SB_LUT4&#39;: 2639}
+</code></pre></div>
+<p>Both simulators agree with the key on all 201,808 cases. The requantizer is <strong>5,322 generic gates / 2,777 iCE40 cells</strong> (measured), about thirteen times a Chapter 2 multiplier. It is a large block for what it does, mostly because of the 32 x 24 multiply; a real design would share one requantizer per row of outputs, or pipeline it. (Not measured here: speed.)</p>
+<h2 id="testing-the-tests">Testing the tests<a class="headerlink" href="#testing-the-tests" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="sd">&quot;&quot;&quot;Chapter 3: test the tests. Break the requantizer one line at a time; every real mutant must be caught. Equivalent mutants are reported separately.&quot;&quot;&quot;</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)));</span> <span class="kn">import</span> <span class="nn">hw</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">R</span> <span class="o">=</span> <span class="s2">&quot;rtl/requant.v&quot;</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">M</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;rounding constant left out (truncate)&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] sum = {1&#39;b0, prod} + {1&#39;b0, half};&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] sum = {1&#39;b0, prod};&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;rounding constant is 2^s instead of 2^(s-1)&quot;</span><span class="p">,</span> <span class="s2">&quot;(56&#39;d1 &lt;&lt; (s - 6&#39;d1))&quot;</span><span class="p">,</span> <span class="s2">&quot;(56&#39;d1 &lt;&lt; s)&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;clamp removed (low 7 bits kept)&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [6:0] mag_q = (shifted &gt; limit) ? 7&#39;d127 : shifted[6:0];&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [6:0] mag_q = shifted[6:0];&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;clamp returns 126&quot;</span><span class="p">,</span> <span class="s2">&quot;? 7&#39;d127 : shifted[6:0]&quot;</span><span class="p">,</span> <span class="s2">&quot;? 7&#39;d126 : shifted[6:0]&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;clamp at 128 (allows -128)&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] limit = 57&#39;d127;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] limit = 57&#39;d128;&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;rounding done on the signed value (floor), not the magnitude&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [31:0] mag = neg ? (~acc + 32&#39;d1) : acc;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [31:0] mag = acc;&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;negative sign not restored&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [7:0] signed_q = neg ? -$signed({1&#39;b0, mag_q}) : $signed({1&#39;b0, mag_q});&quot;</span><span class="p">,</span> <span class="s2">&quot;wire signed [7:0] signed_q = $signed({1&#39;b0, mag_q});&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;relu ignored&quot;</span><span class="p">,</span> <span class="s2">&quot;assign q = (relu &amp;&amp; signed_q[7]) ? 8&#39;sd0 : signed_q;&quot;</span><span class="p">,</span> <span class="s2">&quot;assign q = signed_q;&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;relu always on&quot;</span><span class="p">,</span> <span class="s2">&quot;assign q = (relu &amp;&amp; signed_q[7]) ? 8&#39;sd0 : signed_q;&quot;</span><span class="p">,</span> <span class="s2">&quot;assign q = signed_q[7] ? 8&#39;sd0 : signed_q;&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;mantissa truncated to 23 bits&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [55:0] prod = mag * m;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [55:0] prod = mag * {1&#39;b0, m[22:0]};&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;product truncated to 48 bits&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [55:0] prod = mag * m;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [55:0] prod = (mag * m) &amp; 56&#39;hFFFFFFFFFFFF;&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;shift amount off by one&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] shifted = sum &gt;&gt; s;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] shifted = sum &gt;&gt; (s + 6&#39;d1);&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;shift uses only 5 bits&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] shifted = sum &gt;&gt; s;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] shifted = sum &gt;&gt; s[4:0];&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;most negative accumulator not handled (magnitude as 31 bits)&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [31:0] mag = neg ? (~acc + 32&#39;d1) : acc;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [31:0] mag = neg ? {1&#39;b0, (~acc[30:0] + 31&#39;d1)} : acc;&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;ties round toward zero (rounding constant minus one)&quot;</span><span class="p">,</span> <span class="s2">&quot;{1&#39;b0, half};&quot;</span><span class="p">,</span> <span class="s2">&quot;{1&#39;b0, half} - 57&#39;d1;&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="p">]</span>
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a><span class="n">EQUIV</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;EQUIVALENT: shift of 0 adds a half (1 &lt;&lt; 63 is cut to 0 by the 56-bit wire)&quot;</span><span class="p">,</span> <span class="s2">&quot;(s == 6&#39;d0) ? 56&#39;d0 :&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;EQUIVALENT: clamp compares against 126 (a magnitude of 127 is returned as 127 either way)&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] limit = 57&#39;d127;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire [56:0] limit = 57&#39;d126;&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a> <span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">&quot;EQUIVALENT: compare against the limit with &gt;= 128 instead of &gt; 127&quot;</span><span class="p">,</span> <span class="s2">&quot;(shifted &gt; limit)&quot;</span><span class="p">,</span> <span class="s2">&quot;(shifted &gt;= 57&#39;d128)&quot;</span><span class="p">),</span>
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a><span class="p">]</span>
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a><span class="n">F</span> <span class="o">=</span> <span class="p">[</span><span class="n">R</span><span class="p">]</span>
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;NOTE: this script deliberately breaks copies of the RTL. &#39;caught&#39; lines are EXPECTED: they show the testbench can detect the mistake.&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a><span class="n">c</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">l</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">mutate</span><span class="p">([</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">M</span> <span class="k">if</span> <span class="n">m</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="n">F</span><span class="p">,</span> <span class="s2">&quot;requant_tb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;tb/requant_tb.v&quot;</span><span class="p">]);</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">l</span><span class="p">));</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">requantizer: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> broken circuits caught&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a><span class="n">c2</span><span class="p">,</span> <span class="n">n2</span><span class="p">,</span> <span class="n">l2</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="n">EQUIV</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="s2">&quot;requant_tb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;tb/requant_tb.v&quot;</span><span class="p">]);</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Changes that look like bugs and are not:&quot;</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">l2</span><span class="p">))</span>
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a><span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="n">n</span> <span class="ow">and</span> <span class="n">c2</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Output (cloud sandbox -- live-executed)</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>NOTE: this script deliberately breaks copies of the RTL. &#39;caught&#39; lines are EXPECTED: they show the testbench can detect the mistake.
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>rounding constant left out (truncate): caught
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>rounding constant is 2^s instead of 2^(s-1): caught
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>clamp removed (low 7 bits kept): caught
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>clamp returns 126: caught
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>clamp at 128 (allows -128): caught
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>rounding done on the signed value (floor), not the magnitude: caught
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>negative sign not restored: caught
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>relu ignored: caught
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>relu always on: caught
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>mantissa truncated to 23 bits: caught
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>product truncated to 48 bits: caught
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>shift amount off by one: caught
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>shift uses only 5 bits: caught
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>most negative accumulator not handled (magnitude as 31 bits): caught
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>ties round toward zero (rounding constant minus one): caught
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>requantizer: 15 of 15 broken circuits caught
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>Changes that look like bugs and are not:
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>EQUIVALENT: shift of 0 adds a half (1 &lt;&lt; 63 is cut to 0 by the 56-bit wire): NOT CAUGHT
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>EQUIVALENT: clamp compares against 126 (a magnitude of 127 is returned as 127 either way): NOT CAUGHT
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>EQUIVALENT: compare against the limit with &gt;= 128 instead of &gt; 127: NOT CAUGHT
+</code></pre></div>
+<p>All 15 real mutants are caught, including the subtle ones: rounding the signed value instead of the magnitude, a shift of 5 bits instead of 6, a product cut to 48 bits, the rounding constant minus one (ties toward zero), and the 31-bit magnitude of the most negative accumulator.</p>
+<p>Three mutants survive and each is <strong>equivalent</strong>; none is a gap:</p>
+<ul>
+<li><em>"Shift of 0 adds a half."</em> With <code>s = 0</code>, <code>1 &lt;&lt; (s-1)</code> would be <code>1 &lt;&lt; 63</code>, but the <code>half</code> wire is 56 bits wide, so the 1 falls off the end and the constant is 0 anyway. The special case in the source is documentation, not logic.</li>
+<li><em>"Clamp compares against 126."</em> A magnitude of exactly 127 is returned as 127 either way (clamped or not).</li>
+<li><em>"Compare <code>&gt;= 128</code> instead of <code>&gt; 127</code>."</em> Same condition on integers.</li>
+</ul>
+<p>This is worth knowing for a reason beyond the test: the first two are <strong>dead logic</strong> a synthesis tool will remove, and an honest mutation report finds it.</p>
+<h2 id="how-much-accuracy-does-int8-cost">How much accuracy does int8 cost?<a class="headerlink" href="#how-much-accuracy-does-int8-cost" title="Permanent link">&para;</a></h2>
+<p>All figures below are <strong>measured</strong> with <code>tools/ch03_study.py</code> (pure Python, fixed seeds, Gaussian random data, relative RMS error against an fp64 reference). They show the <em>shape</em> of the effect on random data; real model weights have their own distributions.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="sd">&quot;&quot;&quot;Chapter 3: how much does int8 cost in accuracy? Pure Python, fixed seeds. Compares per-tensor and per-row weight scales, with and without an outlier row, and shows error against the length K of the dot product.&quot;&quot;&quot;</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="kn">import</span> <span class="nn">math</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">random</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)),</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">))</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="kn">from</span> <span class="nn">quant</span> <span class="kn">import</span> <span class="n">quantize</span><span class="p">,</span> <span class="n">scale_for</span><span class="p">,</span> <span class="n">mantissa_shift</span><span class="p">,</span> <span class="n">requant</span><span class="p">,</span> <span class="n">matmul_int8</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">R</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="k">def</span> <span class="nf">gauss_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">sd</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span> <span class="k">return</span> <span class="p">[[</span><span class="n">R</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">sd</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">)]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="k">def</span> <span class="nf">rms</span><span class="p">(</span><span class="n">v</span><span class="p">):</span> <span class="k">return</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">v</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="k">def</span> <span class="nf">fmatmul</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span> <span class="k">return</span> <span class="p">[[</span><span class="nb">sum</span><span class="p">(</span><span class="n">A</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">B</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">B</span><span class="p">)))</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">B</span><span class="p">[</span><span class="mi">0</span><span class="p">]))]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">A</span><span class="p">))]</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="k">def</span> <span class="nf">transpose</span><span class="p">(</span><span class="n">M</span><span class="p">):</span> <span class="k">return</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">M</span><span class="p">)]</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="k">def</span> <span class="nf">int8_layer</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">per_row</span><span class="p">):</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;X: n x k activations (one scale), W: k x p weights (one scale, or one per output column). Returns the dequantized int32 result and the final int8 output with its scale.&quot;&quot;&quot;</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    <span class="n">sx</span> <span class="o">=</span> <span class="n">scale_for</span><span class="p">([</span><span class="n">v</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">X</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]);</span> <span class="n">Xq</span> <span class="o">=</span> <span class="p">[[</span><span class="n">quantize</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">sx</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">X</span><span class="p">]</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    <span class="n">cols</span> <span class="o">=</span> <span class="n">transpose</span><span class="p">(</span><span class="n">W</span><span class="p">);</span> <span class="n">sw</span> <span class="o">=</span> <span class="p">[</span><span class="n">scale_for</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">]</span> <span class="k">if</span> <span class="n">per_row</span> <span class="k">else</span> <span class="p">[</span><span class="n">scale_for</span><span class="p">([</span><span class="n">v</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cols</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">c</span><span class="p">])]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>    <span class="n">Wq</span> <span class="o">=</span> <span class="n">transpose</span><span class="p">([[</span><span class="n">quantize</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">sw</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cols</span><span class="p">)])</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>    <span class="n">acc</span> <span class="o">=</span> <span class="n">matmul_int8</span><span class="p">(</span><span class="n">Xq</span><span class="p">,</span> <span class="n">Wq</span><span class="p">)</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>    <span class="n">deq</span> <span class="o">=</span> <span class="p">[[</span><span class="n">acc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">*</span> <span class="n">sx</span> <span class="o">*</span> <span class="n">sw</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sw</span><span class="p">))]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">acc</span><span class="p">))]</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>    <span class="k">return</span> <span class="n">deq</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="k">def</span> <span class="nf">rel_err</span><span class="p">(</span><span class="n">approx</span><span class="p">,</span> <span class="n">exact</span><span class="p">):</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>    <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">approx</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">];</span> <span class="n">e</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">exact</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>    <span class="k">return</span> <span class="n">rms</span><span class="p">([</span><span class="n">x</span> <span class="o">-</span> <span class="n">y</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">e</span><span class="p">)])</span> <span class="o">/</span> <span class="n">rms</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>
+<a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;== 1. relative RMS error of an int8 layer (X: 32 x K, W: K x 32, fp64 is the reference)&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;case&#39;</span><span class="si">:</span><span class="s2">44s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;K=64&#39;</span><span class="si">:</span><span class="s2">&gt;8s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;K=256&#39;</span><span class="si">:</span><span class="s2">&gt;8s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;K=1024&#39;</span><span class="si">:</span><span class="s2">&gt;8s</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">outlier</span><span class="p">,</span> <span class="n">per_row</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;per-tensor scale, plain weights&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;per-column scale, plain weights&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+<a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>                               <span class="p">(</span><span class="s2">&quot;per-tensor scale, one column x30&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;per-column scale, one column x30&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">)):</span>
+<a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>    <span class="n">row</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>    <span class="k">for</span> <span class="n">K</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">1024</span><span class="p">):</span>
+<a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>        <span class="n">X</span> <span class="o">=</span> <span class="n">gauss_matrix</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="n">K</span><span class="p">);</span> <span class="n">W</span> <span class="o">=</span> <span class="n">gauss_matrix</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
+<a id="__codelineno-9-32" name="__codelineno-9-32" href="#__codelineno-9-32"></a>        <span class="k">if</span> <span class="n">outlier</span><span class="p">:</span>
+<a id="__codelineno-9-33" name="__codelineno-9-33" href="#__codelineno-9-33"></a>            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">):</span> <span class="n">W</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mi">30</span>
+<a id="__codelineno-9-34" name="__codelineno-9-34" href="#__codelineno-9-34"></a>        <span class="n">row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rel_err</span><span class="p">(</span><span class="n">int8_layer</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">per_row</span><span class="p">),</span> <span class="n">fmatmul</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">)))</span>
+<a id="__codelineno-9-35" name="__codelineno-9-35" href="#__codelineno-9-35"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">44s</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">e</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">7.3f</span><span class="si">}</span><span class="s2">%&quot;</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">row</span><span class="p">))</span>
+<a id="__codelineno-9-36" name="__codelineno-9-36" href="#__codelineno-9-36"></a>
+<a id="__codelineno-9-37" name="__codelineno-9-37" href="#__codelineno-9-37"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 2. the outlier hurts the OTHER columns: error measured on columns 1..31 only (K=256)&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-38" name="__codelineno-9-38" href="#__codelineno-9-38"></a><span class="k">for</span> <span class="n">per_row</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+<a id="__codelineno-9-39" name="__codelineno-9-39" href="#__codelineno-9-39"></a>    <span class="n">X</span> <span class="o">=</span> <span class="n">gauss_matrix</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">256</span><span class="p">);</span> <span class="n">W</span> <span class="o">=</span> <span class="n">gauss_matrix</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">32</span><span class="p">)</span>
+<a id="__codelineno-9-40" name="__codelineno-9-40" href="#__codelineno-9-40"></a>    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">256</span><span class="p">):</span> <span class="n">W</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">*=</span> <span class="mi">30</span>
+<a id="__codelineno-9-41" name="__codelineno-9-41" href="#__codelineno-9-41"></a>    <span class="n">d</span> <span class="o">=</span> <span class="n">int8_layer</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">per_row</span><span class="p">);</span> <span class="n">e</span> <span class="o">=</span> <span class="n">fmatmul</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
+<a id="__codelineno-9-42" name="__codelineno-9-42" href="#__codelineno-9-42"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;per-column&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">per_row</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;per-tensor&#39;</span><span class="si">:</span><span class="s2">12s</span><span class="si">}</span><span class="s2"> error on the normal columns: </span><span class="si">{</span><span class="n">rel_err</span><span class="p">([</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">d</span><span class="p">],</span><span class="w"> </span><span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">e</span><span class="p">])</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-43" name="__codelineno-9-43" href="#__codelineno-9-43"></a>
+<a id="__codelineno-9-44" name="__codelineno-9-44" href="#__codelineno-9-44"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 3. the mantissa/shift form of a real multiplier&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-45" name="__codelineno-9-45" href="#__codelineno-9-45"></a><span class="n">worst</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-9-46" name="__codelineno-9-46" href="#__codelineno-9-46"></a><span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100000</span><span class="p">):</span>
+<a id="__codelineno-9-47" name="__codelineno-9-47" href="#__codelineno-9-47"></a>    <span class="n">M</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">R</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">16</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="n">mantissa_shift</span><span class="p">(</span><span class="n">M</span><span class="p">);</span> <span class="n">worst</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">worst</span><span class="p">,</span> <span class="nb">abs</span><span class="p">(</span><span class="n">m</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">s</span> <span class="o">-</span> <span class="n">M</span><span class="p">)</span> <span class="o">/</span> <span class="n">M</span><span class="p">)</span>
+<a id="__codelineno-9-48" name="__codelineno-9-48" href="#__codelineno-9-48"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;worst relative error of M ~ m/2^s over 100000 random M in [2^-16, 1]: </span><span class="si">{</span><span class="n">worst</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2">   (bound 2^-24 = </span><span class="si">{</span><span class="mi">2</span><span class="o">**-</span><span class="mi">24</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-49" name="__codelineno-9-49" href="#__codelineno-9-49"></a>
+<a id="__codelineno-9-50" name="__codelineno-9-50" href="#__codelineno-9-50"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 4. end to end: int8 layer, requantized to int8, against the fp64 result (K=256)&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-51" name="__codelineno-9-51" href="#__codelineno-9-51"></a><span class="n">X</span> <span class="o">=</span> <span class="n">gauss_matrix</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">256</span><span class="p">);</span> <span class="n">W</span> <span class="o">=</span> <span class="n">gauss_matrix</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">32</span><span class="p">);</span> <span class="n">exact</span> <span class="o">=</span> <span class="n">fmatmul</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
+<a id="__codelineno-9-52" name="__codelineno-9-52" href="#__codelineno-9-52"></a><span class="n">sx</span> <span class="o">=</span> <span class="n">scale_for</span><span class="p">([</span><span class="n">v</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">X</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]);</span> <span class="n">sw</span> <span class="o">=</span> <span class="n">scale_for</span><span class="p">([</span><span class="n">v</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">W</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">c</span><span class="p">]);</span> <span class="n">so</span> <span class="o">=</span> <span class="n">scale_for</span><span class="p">([</span><span class="n">v</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">exact</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">])</span>
+<a id="__codelineno-9-53" name="__codelineno-9-53" href="#__codelineno-9-53"></a><span class="n">Xq</span> <span class="o">=</span> <span class="p">[[</span><span class="n">quantize</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">sx</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">X</span><span class="p">];</span> <span class="n">Wq</span> <span class="o">=</span> <span class="p">[[</span><span class="n">quantize</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">sw</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">W</span><span class="p">]</span>
+<a id="__codelineno-9-54" name="__codelineno-9-54" href="#__codelineno-9-54"></a><span class="n">acc</span> <span class="o">=</span> <span class="n">matmul_int8</span><span class="p">(</span><span class="n">Xq</span><span class="p">,</span> <span class="n">Wq</span><span class="p">);</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="n">mantissa_shift</span><span class="p">(</span><span class="n">sx</span> <span class="o">*</span> <span class="n">sw</span> <span class="o">/</span> <span class="n">so</span><span class="p">)</span>
+<a id="__codelineno-9-55" name="__codelineno-9-55" href="#__codelineno-9-55"></a><span class="n">out</span> <span class="o">=</span> <span class="p">[[</span><span class="n">requant</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">acc</span><span class="p">]</span>
+<a id="__codelineno-9-56" name="__codelineno-9-56" href="#__codelineno-9-56"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;m = </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2"> (24 bits), s = </span><span class="si">{</span><span class="n">s</span><span class="si">}</span><span class="s2">; int8 output error relative to fp64: </span><span class="si">{</span><span class="n">rel_err</span><span class="p">([[</span><span class="n">q</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">so</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">q</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">r</span><span class="p">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">out</span><span class="p">],</span><span class="w"> </span><span class="n">exact</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-57" name="__codelineno-9-57" href="#__codelineno-9-57"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;max |acc| seen </span><span class="si">{</span><span class="nb">max</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">r</span><span class="p">)</span><span class="si">}</span><span class="s2"> of 2^31 = </span><span class="si">{</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="si">}</span><span class="s2">: the 32-bit accumulator is </span><span class="si">{</span><span class="mi">2</span><span class="o">**</span><span class="mi">31</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">r</span><span class="p">)</span><span class="si">}</span><span class="s2">x larger than needed here&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-58" name="__codelineno-9-58" href="#__codelineno-9-58"></a>
+<a id="__codelineno-9-59" name="__codelineno-9-59" href="#__codelineno-9-59"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 5. bytes per weight, and what a 7-billion-parameter model occupies&quot;</span><span class="p">)</span>
+<a id="__codelineno-9-60" name="__codelineno-9-60" href="#__codelineno-9-60"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;fp32&quot;</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;fp16/bf16&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;int8&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;int4&quot;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)):</span>
+<a id="__codelineno-9-61" name="__codelineno-9-61" href="#__codelineno-9-61"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">10s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">b</span><span class="si">:</span><span class="s2">4.1f</span><span class="si">}</span><span class="s2"> bytes/weight   </span><span class="si">{</span><span class="mf">7e9</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">1e9</span><span class="si">:</span><span class="s2">5.1f</span><span class="si">}</span><span class="s2"> GB   (derived: 7e9 x bytes)&quot;</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>== 1. relative RMS error of an int8 layer (X: 32 x K, W: K x 32, fp64 is the reference)
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>case                                             K=64    K=256   K=1024
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>per-tensor scale, plain weights                1.109%   1.415%   1.429%
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>per-column scale, plain weights                1.022%   1.176%   1.225%
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>per-tensor scale, one column x30               2.482%   3.576%   5.034%
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>per-column scale, one column x30               0.762%   1.192%   1.472%
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>== 2. the outlier hurts the OTHER columns: error measured on columns 1..31 only (K=256)
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>per-tensor   error on the normal columns: 19.485%
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>per-column   error on the normal columns: 1.261%
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>== 3. the mantissa/shift form of a real multiplier
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>worst relative error of M ~ m/2^s over 100000 random M in [2^-16, 1]: 5.933e-08   (bound 2^-24 = 5.960e-08)
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>== 4. end to end: int8 layer, requantized to int8, against the fp64 result (K=256)
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>m = 10289232 (24 bits), s = 32; int8 output error relative to fp64: 1.478%
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>max |acc| seen 53183 of 2^31 = 2147483648: the 32-bit accumulator is 40379x larger than needed here
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>== 5. bytes per weight, and what a 7-billion-parameter model occupies
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>fp32        4.0 bytes/weight    28.0 GB   (derived: 7e9 x bytes)
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>fp16/bf16   2.0 bytes/weight    14.0 GB   (derived: 7e9 x bytes)
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>int8        1.0 bytes/weight     7.0 GB   (derived: 7e9 x bytes)
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>int4        0.5 bytes/weight     3.5 GB   (derived: 7e9 x bytes)
+</code></pre></div>
+<h3 id="reading-it">Reading it<a class="headerlink" href="#reading-it" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Plain data: about 1-1.5% error</strong>, and it does <em>not</em> grow with the length K of the dot product (1.1% at K=64, 1.4% at K=1024). Rounding errors are random and average out relative to the sum.</li>
+<li><strong>Per-column scales help a little on plain data</strong> (1.2% vs 1.4%), because each column gets its own <code>max/127</code>.</li>
+<li><strong>One outlier column breaks per-tensor quantization for everyone else.</strong> With one column 30x larger, the single scale is set by the outlier, the other 31 columns use only a few of the 255 levels, and their error is <strong>19.5%</strong> (per-tensor) vs <strong>1.3%</strong> (per-column). This is the reason real systems use per-channel scales and special handling of outliers.</li>
+<li><strong>The requantizer's own approximation is negligible.</strong> The worst relative error of <code>m / 2^s</code> against the exact multiplier over 100,000 random values is 5.9e-8, at the 2^-24 bound.</li>
+<li><strong>The 32-bit accumulator is generous on this data</strong> (about 40,000 times the largest value seen), consistent with Chapter 2: overflow needs 2^16 worst-case products. Real models with large activations and K in the thousands come closer; this test does not claim they do not.</li>
+<li><strong>Bytes per weight</strong> are derived, not measured: fp32 4, fp16 2, int8 1, int4 0.5, so a 7-billion-parameter model occupies 28, 14, 7 and 3.5 GB. Chapter 9 turns this into tokens per second.</li>
+</ul>
+<h2 id="what-this-chapter-does-and-does-not-establish">What this chapter does and does not establish<a class="headerlink" href="#what-this-chapter-does-and-does-not-establish" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The requantizer <strong>matches its reference exactly</strong> on 201,808 cases including all the tie and clamp corners; it is not exhaustive (2^63 combinations).</li>
+<li>The accuracy numbers are for random Gaussian data. Whether int8 is accurate enough for a given model is an experiment on that model.</li>
+<li>The gate counts are Yosys generic gates and iCE40 cells, not area or speed.</li>
+</ul>
+<h2 id="chapter-summary">Chapter summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>int8 symmetric quantization stores <code>x</code> as <code>q</code> in -127..127 with <code>scale = max|x|/127</code>. The int32 accumulator returns to int8 through a mantissa-and-shift requantizer with round-half-away and a clamp; the circuit matches the integer reference on all 201,808 cases and all 15 real mutants are caught (3 equivalents explained). The accuracy cost is about 1-1.5% on plain data, but a single outlier ruins per-tensor quantization for the rest, which per-column scales fix.</p>
+<h2 id="self-check-questions">Self-check questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Why does the scheme avoid -128, and what would break if it were allowed?</li>
+<li>The requantizer rounds the magnitude, not the signed value. What would change for an accumulator of -3 with M = 1/2?</li>
+<li>Why does the error not grow with K, and why does an outlier column hurt the other columns?</li>
+<li>The mutant "shift of 0 adds a half" survives. Why is that not a test gap?</li>
+<li>A 7B-parameter model in int8 needs 7 GB of weights. If a chip can read 100 GB/s, what is the upper bound on tokens per second, and what are you assuming?</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

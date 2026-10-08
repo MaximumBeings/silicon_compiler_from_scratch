@@ -1,0 +1,1286 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A systolic array in Verilog, int8 quantization, KV cache and batching, bandwidth analysis, a Yosys synthesis flow, and a compiler from a model graph to the chip. Open-source tools only.">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../../part08/08-attention-kv-cache/">
+      
+      
+        <link rel="next" href="../../part10/10-synthesis-and-gate-level/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps - Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#9-batching-and-bandwidth-why-decoding-is-slow-and-what-helps" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-header__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-nav__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/01-the-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. The Flow: One Circuit Through Four Tools, and a Way to Test the Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part02/02-mac-and-number-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part03/03-quantization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part04/04-systolic-array/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. The Systolic Array: N x N Multiplies Per Cycle, and the Schedule That Makes It Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part05/05-scratchpad-dma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. The Scratchpad, the DMA Engine, and Double Buffering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part06/06-vector-unit-softmax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. The Vector Unit: A Lookup-Table Exponential, a Divider, and Fixed-Point Softmax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part07/07-the-whole-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. GA-2: An Instruction Set, a Sequencer, and the Whole Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part08/08-attention-kv-cache/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Attention and the KV Cache: One Decode Step, From Hidden State to Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#arithmetic-intensity-how-much-work-per-byte-moved" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arithmetic intensity: how much work per byte moved
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#batching-reuse-the-weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batching: reuse the weights
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-batched-program-builder-modelbatchpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The batched program builder: model/batch.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-it-on-the-chip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running it on the chip
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running it on the chip">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-it-means-for-a-real-model-derived-with-an-assumed-chip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it means for a real model (derived, with an assumed chip)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-the-tests-batch-invariance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the tests: batch invariance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-chapter-does-and-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this chapter does and does not establish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part10/10-synthesis-and-gate-level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. Synthesis, Timing and Gate-Level Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../answers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Answers to the Self-Check Questions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#arithmetic-intensity-how-much-work-per-byte-moved" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Arithmetic intensity: how much work per byte moved
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#batching-reuse-the-weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batching: reuse the weights
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-batched-program-builder-modelbatchpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The batched program builder: model/batch.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-it-on-the-chip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running it on the chip
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running it on the chip">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-it-means-for-a-real-model-derived-with-an-assumed-chip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What it means for a real model (derived, with an assumed chip)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-the-tests-batch-invariance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the tests: batch invariance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-chapter-does-and-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this chapter does and does not establish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="9-batching-and-bandwidth-why-decoding-is-slow-and-what-helps">9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps<a class="headerlink" href="#9-batching-and-bandwidth-why-decoding-is-slow-and-what-helps" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand:</strong> the one idea that explains most of the economics of running a language model: <strong>decoding is limited by memory traffic, not by arithmetic.</strong> You will measure it on the chip, build the standard remedy (batching several requests so they share the weights), see exactly how much of the problem it fixes and what it cannot touch, state the limit with a <strong>roofline</strong>, and test the batched program builder with the oracle that batching makes possible: <em>a request must get the same answer whether or not other requests ride along.</em></p>
+<p><strong>What you need to know first:</strong> Chapter 7 (the chip and its counters) and Chapter 8 (the decode step).</p>
+<h2 id="arithmetic-intensity-how-much-work-per-byte-moved">Arithmetic intensity: how much work per byte moved<a class="headerlink" href="#arithmetic-intensity-how-much-work-per-byte-moved" title="Permanent link">&para;</a></h2>
+<p>Every program does some number of multiply-accumulates (MACs) and moves some number of bytes to and from memory. The ratio is its <strong>arithmetic intensity</strong>, in MACs per byte. A chip has two ceilings:</p>
+<ul>
+<li>a <strong>compute ceiling</strong>: the most MACs per cycle it can do (here 16, a 4 x 4 array, at best);</li>
+<li>a <strong>memory ceiling</strong>: bytes per cycle it can move times the program's intensity.</li>
+</ul>
+<p>The attainable speed is the <em>lower</em> of the two. This is the <strong>roofline model</strong>. The <em>ridge point</em> is the intensity at which the two ceilings meet: below it a program is <strong>memory-bound</strong> (faster arithmetic would not help), above it <strong>compute-bound</strong>. For GA-2 the memory moves one word per cycle (one int8 element per word in the design's logical accounting) and the array peaks at 16 MACs per cycle, so the ridge point is 16 MACs per word. A program needs to do 16 MACs for every word it moves just to keep the array busy.</p>
+<p>Now look at what a decode step does. Each weight is used <strong>once</strong> per token: a matrix-vector product reads every element of the matrix and uses it in one multiply. Intensity is about 1 MAC per word, 16 times below the ridge. That is true of every chip and every model: for a single sequence, a decode step is memory-bound by a wide margin.</p>
+<h2 id="batching-reuse-the-weights">Batching: reuse the weights<a class="headerlink" href="#batching-reuse-the-weights" title="Permanent link">&para;</a></h2>
+<p>If <code>B</code> requests are decoded together, their <code>B</code> new tokens can be stacked as the rows of one matrix, and <strong>one</strong> matrix product with <code>M = B</code> rows does the projection for all of them. The weights are read once for the whole batch, so intensity rises by up to <code>B</code>. On a 4 x 4 array <code>M = 4</code> costs almost the same as <code>M = 1</code>, so a batch of four is nearly free in the projections.</p>
+<p>What batching <strong>cannot</strong> share is attention: each request has its own cache, and its scores and weighted sum read only that cache. Those costs add up per request.</p>
+<h2 id="the-batched-program-builder-modelbatchpy">The batched program builder: <code>model/batch.py</code><a class="headerlink" href="#the-batched-program-builder-modelbatchpy" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="sd">&quot;&quot;&quot;Chapter 9: decode steps for several sequences at once (&quot;batching&quot;), as GA-2 programs.</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="sd">The B sequences share one set of weights but each has its own hidden states and its own K and V caches, possibly at different lengths (as in a server where requests arrive at different times).</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="sd">What batching shares: the weights. The projections of the B new tokens are ONE matrix product with M = B rows instead of B products with M = 1, so the weights are loaded once and the 4 x 4 array has B rows to work on.</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="sd">What it cannot share: attention. Each sequence attends over its own cache, so scores and weighted sums stay per sequence.</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="sd">Memory plan (words).  EXTERNAL (sequence b, 0..3): X_b at 2048 + 256 b, K cache 3072 + 256 b, V cache 4096 + 256 b, output 5120 + 16 b; the shared weights at 512, 768, 1024.  Contexts of up to 16 tokens.</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="sd">SCRATCHPAD: see SP_* (batch slot j holds the j-th sequence of the batch).&quot;&quot;&quot;</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="kn">import</span> <span class="nn">math</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">random</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;GA2_EXT&quot;</span><span class="p">,</span> <span class="s2">&quot;8192&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)))</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="kn">import</span> <span class="nn">ga2_isa</span> <span class="k">as</span> <span class="nn">I</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="kn">from</span> <span class="nn">quant</span> <span class="kn">import</span> <span class="n">quantize</span><span class="p">,</span> <span class="n">scale_for</span><span class="p">,</span> <span class="n">mantissa_shift</span><span class="p">,</span> <span class="n">requant</span><span class="p">,</span> <span class="n">matmul_int8</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="kn">from</span> <span class="nn">softmax_gold</span> <span class="kn">import</span> <span class="n">softmax_fixed</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="n">DM</span><span class="p">,</span> <span class="n">D</span><span class="p">,</span> <span class="n">LMAX</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">16</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">EX_WQ</span> <span class="o">=</span> <span class="mi">512</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="k">def</span> <span class="nf">EX_X</span><span class="p">(</span><span class="n">b</span><span class="p">):</span> <span class="k">return</span> <span class="mi">2048</span> <span class="o">+</span> <span class="mi">256</span> <span class="o">*</span> <span class="n">b</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="k">def</span> <span class="nf">EX_KC</span><span class="p">(</span><span class="n">b</span><span class="p">):</span> <span class="k">return</span> <span class="mi">3072</span> <span class="o">+</span> <span class="mi">256</span> <span class="o">*</span> <span class="n">b</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="k">def</span> <span class="nf">EX_VC</span><span class="p">(</span><span class="n">b</span><span class="p">):</span> <span class="k">return</span> <span class="mi">4096</span> <span class="o">+</span> <span class="mi">256</span> <span class="o">*</span> <span class="n">b</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="k">def</span> <span class="nf">EX_OUT</span><span class="p">(</span><span class="n">b</span><span class="p">):</span> <span class="k">return</span> <span class="mi">5120</span> <span class="o">+</span> <span class="mi">16</span> <span class="o">*</span> <span class="n">b</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="n">SP_X</span><span class="p">,</span> <span class="n">SP_W</span><span class="p">,</span> <span class="n">SP_QA</span><span class="p">,</span> <span class="n">SP_KA</span><span class="p">,</span> <span class="n">SP_VA</span><span class="p">,</span> <span class="n">SP_Q8</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">832</span><span class="p">,</span> <span class="mi">896</span><span class="p">,</span> <span class="mi">960</span><span class="p">,</span> <span class="mi">1024</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="n">SP_S</span><span class="p">,</span> <span class="n">SP_S8</span><span class="p">,</span> <span class="n">SP_P</span><span class="p">,</span> <span class="n">SP_WT</span><span class="p">,</span> <span class="n">SP_O</span><span class="p">,</span> <span class="n">SP_O8</span> <span class="o">=</span> <span class="mi">1088</span><span class="p">,</span> <span class="mi">1120</span><span class="p">,</span> <span class="mi">1152</span><span class="p">,</span> <span class="mi">1184</span><span class="p">,</span> <span class="mi">1216</span><span class="p">,</span> <span class="mi">1232</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="k">def</span> <span class="nf">SP_KC</span><span class="p">(</span><span class="n">j</span><span class="p">):</span> <span class="k">return</span> <span class="mi">1280</span> <span class="o">+</span> <span class="mi">512</span> <span class="o">*</span> <span class="n">j</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="k">def</span> <span class="nf">SP_VC</span><span class="p">(</span><span class="n">j</span><span class="p">):</span> <span class="k">return</span> <span class="mi">1280</span> <span class="o">+</span> <span class="mi">512</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">256</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="n">B_</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">build</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="k">def</span> <span class="nf">make_batch</span><span class="p">(</span><span class="n">nseq</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">seed</span><span class="p">):</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;nseq sequences of L tokens with shared weights; ONE set of scales for the whole batch (a model has one set of scales, not one per request).&quot;&quot;&quot;</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    <span class="n">R</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">seed</span><span class="p">);</span> <span class="n">g</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">sd</span><span class="p">:</span> <span class="p">[[</span><span class="n">R</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">sd</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">c</span><span class="p">)]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">r</span><span class="p">)]</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    <span class="n">W</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span><span class="p">(</span><span class="n">DM</span><span class="p">,</span> <span class="n">D</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">DM</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)];</span> <span class="n">Xs</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">DM</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nseq</span><span class="p">)]</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    <span class="n">mm</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">A</span><span class="p">,</span> <span class="n">Bm</span><span class="p">:</span> <span class="p">[[</span><span class="nb">sum</span><span class="p">(</span><span class="n">A</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">Bm</span><span class="p">[</span><span class="n">t</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Bm</span><span class="p">)))</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Bm</span><span class="p">[</span><span class="mi">0</span><span class="p">]))]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">A</span><span class="p">))]</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="n">flat</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">Ms</span><span class="p">:</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="n">M</span> <span class="ow">in</span> <span class="n">Ms</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">M</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    <span class="n">Qs</span><span class="p">,</span> <span class="n">Ks</span><span class="p">,</span> <span class="n">Vs</span> <span class="o">=</span> <span class="p">([</span><span class="n">mm</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">X</span> <span class="ow">in</span> <span class="n">Xs</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">W</span><span class="p">)</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    <span class="n">outs</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nseq</span><span class="p">):</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">L</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>            <span class="n">q</span> <span class="o">=</span> <span class="n">Qs</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="n">t</span> <span class="o">-</span> <span class="mi">1</span><span class="p">];</span> <span class="n">sc</span> <span class="o">=</span> <span class="p">[</span><span class="nb">sum</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">Ks</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="n">p</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">D</span><span class="p">))</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">D</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">t</span><span class="p">)];</span> <span class="n">mx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">sc</span><span class="p">);</span> <span class="n">e</span> <span class="o">=</span> <span class="p">[</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">v</span> <span class="o">-</span> <span class="n">mx</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">sc</span><span class="p">];</span> <span class="n">z</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>            <span class="n">outs</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">sum</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">/</span> <span class="n">z</span> <span class="o">*</span> <span class="n">Vs</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="n">p</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">t</span><span class="p">))</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">D</span><span class="p">)])</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>    <span class="n">sc_</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">scale_for</span><span class="p">(</span><span class="n">flat</span><span class="p">(</span><span class="n">Xs</span><span class="p">)),</span> <span class="s2">&quot;wq&quot;</span><span class="p">:</span> <span class="n">scale_for</span><span class="p">(</span><span class="n">flat</span><span class="p">([</span><span class="n">W</span><span class="p">[</span><span class="mi">0</span><span class="p">]])),</span> <span class="s2">&quot;wk&quot;</span><span class="p">:</span> <span class="n">scale_for</span><span class="p">(</span><span class="n">flat</span><span class="p">([</span><span class="n">W</span><span class="p">[</span><span class="mi">1</span><span class="p">]])),</span> <span class="s2">&quot;wv&quot;</span><span class="p">:</span> <span class="n">scale_for</span><span class="p">(</span><span class="n">flat</span><span class="p">([</span><span class="n">W</span><span class="p">[</span><span class="mi">2</span><span class="p">]])),</span> <span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">scale_for</span><span class="p">(</span><span class="n">flat</span><span class="p">(</span><span class="n">Qs</span><span class="p">)),</span> <span class="s2">&quot;k&quot;</span><span class="p">:</span> <span class="n">scale_for</span><span class="p">(</span><span class="n">flat</span><span class="p">(</span><span class="n">Ks</span><span class="p">)),</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">scale_for</span><span class="p">(</span><span class="n">flat</span><span class="p">(</span><span class="n">Vs</span><span class="p">)),</span> <span class="s2">&quot;o&quot;</span><span class="p">:</span> <span class="n">scale_for</span><span class="p">([</span><span class="n">v</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">outs</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">o</span><span class="p">])}</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;nseq&quot;</span><span class="p">:</span> <span class="n">nseq</span><span class="p">,</span> <span class="s2">&quot;L&quot;</span><span class="p">:</span> <span class="n">L</span><span class="p">,</span> <span class="s2">&quot;Xs&quot;</span><span class="p">:</span> <span class="n">Xs</span><span class="p">,</span> <span class="s2">&quot;W&quot;</span><span class="p">:</span> <span class="n">W</span><span class="p">,</span> <span class="s2">&quot;scales&quot;</span><span class="p">:</span> <span class="n">sc_</span><span class="p">}</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="k">def</span> <span class="nf">rq_params</span><span class="p">(</span><span class="n">ex</span><span class="p">):</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>    <span class="n">s</span> <span class="o">=</span> <span class="n">ex</span><span class="p">[</span><span class="s2">&quot;scales&quot;</span><span class="p">];</span> <span class="n">ms</span> <span class="o">=</span> <span class="n">mantissa_shift</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="n">ms</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;wq&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;q&quot;</span><span class="p">]),</span> <span class="s2">&quot;k&quot;</span><span class="p">:</span> <span class="n">ms</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;wk&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;k&quot;</span><span class="p">]),</span> <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="n">ms</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;wv&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;v&quot;</span><span class="p">]),</span> <span class="s2">&quot;scores&quot;</span><span class="p">:</span> <span class="n">ms</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="s2">&quot;q&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;k&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">D</span><span class="p">)</span> <span class="o">*</span> <span class="mi">16</span><span class="p">),</span> <span class="s2">&quot;weights&quot;</span><span class="p">:</span> <span class="n">ms</span><span class="p">(</span><span class="mi">127</span> <span class="o">/</span> <span class="mi">65536</span><span class="p">),</span> <span class="s2">&quot;out&quot;</span><span class="p">:</span> <span class="n">ms</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="s2">&quot;v&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">127</span> <span class="o">*</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;o&quot;</span><span class="p">]))}</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="k">def</span> <span class="nf">ext_image</span><span class="p">(</span><span class="n">ex</span><span class="p">):</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>    <span class="n">s</span> <span class="o">=</span> <span class="n">ex</span><span class="p">[</span><span class="s2">&quot;scales&quot;</span><span class="p">];</span> <span class="n">img</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">I</span><span class="o">.</span><span class="n">EXT</span><span class="p">;</span> <span class="n">w32</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFFFF</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>    <span class="k">for</span> <span class="n">wi</span><span class="p">,</span> <span class="n">nm</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">((</span><span class="s2">&quot;wq&quot;</span><span class="p">,</span> <span class="s2">&quot;wk&quot;</span><span class="p">,</span> <span class="s2">&quot;wv&quot;</span><span class="p">)):</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">DM</span><span class="p">):</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">D</span><span class="p">):</span> <span class="n">img</span><span class="p">[</span><span class="n">EX_WQ</span> <span class="o">+</span> <span class="mi">256</span> <span class="o">*</span> <span class="n">wi</span> <span class="o">+</span> <span class="n">r</span> <span class="o">*</span> <span class="n">D</span> <span class="o">+</span> <span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">w32</span><span class="p">(</span><span class="n">quantize</span><span class="p">(</span><span class="n">ex</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">][</span><span class="n">wi</span><span class="p">][</span><span class="n">r</span><span class="p">][</span><span class="n">c</span><span class="p">],</span> <span class="n">s</span><span class="p">[</span><span class="n">nm</span><span class="p">]))</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ex</span><span class="p">[</span><span class="s2">&quot;nseq&quot;</span><span class="p">]):</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ex</span><span class="p">[</span><span class="s2">&quot;L&quot;</span><span class="p">]):</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">DM</span><span class="p">):</span> <span class="n">img</span><span class="p">[</span><span class="n">EX_X</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="n">DM</span> <span class="o">+</span> <span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">w32</span><span class="p">(</span><span class="n">quantize</span><span class="p">(</span><span class="n">ex</span><span class="p">[</span><span class="s2">&quot;Xs&quot;</span><span class="p">][</span><span class="n">b</span><span class="p">][</span><span class="n">t</span><span class="p">][</span><span class="n">c</span><span class="p">],</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">]))</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>    <span class="k">return</span> <span class="n">img</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="k">def</span> <span class="nf">program</span><span class="p">(</span><span class="n">seqs</span><span class="p">,</span> <span class="n">ts</span><span class="p">,</span> <span class="n">P</span><span class="p">):</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;One decode step for the sequences `seqs` (indices into the external layout), which have `ts[i]` tokens each including the new one. Batch slot i holds sequence seqs[i].&quot;&quot;&quot;</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">seqs</span><span class="p">);</span> <span class="n">prog</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">seqs</span><span class="p">):</span> <span class="n">prog</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;LD&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_X</span> <span class="o">+</span> <span class="n">j</span> <span class="o">*</span> <span class="n">DM</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">EX_X</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">ts</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">DM</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">DM</span><span class="p">))</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>    <span class="n">prog</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;LD&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_W</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">EX_WQ</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="mi">3</span> <span class="o">*</span> <span class="n">DM</span> <span class="o">*</span> <span class="n">D</span><span class="p">))</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">seqs</span><span class="p">):</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>        <span class="k">if</span> <span class="n">ts</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span> <span class="n">prog</span> <span class="o">+=</span> <span class="p">[</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;LD&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_KC</span><span class="p">(</span><span class="n">j</span><span class="p">),</span> <span class="n">src</span><span class="o">=</span><span class="n">EX_KC</span><span class="p">(</span><span class="n">b</span><span class="p">),</span> <span class="nb">len</span><span class="o">=</span><span class="p">(</span><span class="n">ts</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">D</span><span class="p">),</span> <span class="n">B_</span><span class="p">(</span><span class="s2">&quot;LD&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_VC</span><span class="p">(</span><span class="n">j</span><span class="p">),</span> <span class="n">src</span><span class="o">=</span><span class="n">EX_VC</span><span class="p">(</span><span class="n">b</span><span class="p">),</span> <span class="nb">len</span><span class="o">=</span><span class="p">(</span><span class="n">ts</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">D</span><span class="p">)]</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>    <span class="k">for</span> <span class="n">wi</span><span class="p">,</span> <span class="n">acc</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">((</span><span class="n">SP_QA</span><span class="p">,</span> <span class="n">SP_KA</span><span class="p">,</span> <span class="n">SP_VA</span><span class="p">)):</span>                                    <span class="c1"># the projections: ONE matrix product with M = n rows per column block</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">D</span> <span class="o">//</span> <span class="mi">4</span><span class="p">):</span> <span class="n">prog</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;MM&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">acc</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">A</span><span class="o">=</span><span class="n">SP_X</span><span class="p">,</span> <span class="n">B</span><span class="o">=</span><span class="n">SP_W</span> <span class="o">+</span> <span class="mi">256</span> <span class="o">*</span> <span class="n">wi</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="n">DM</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">tb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">lda</span><span class="o">=</span><span class="n">DM</span><span class="p">,</span> <span class="n">ldb</span><span class="o">=</span><span class="n">D</span><span class="p">,</span> <span class="n">ldc</span><span class="o">=</span><span class="n">D</span><span class="p">))</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>    <span class="n">prog</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;RQ&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_Q8</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_QA</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">n</span> <span class="o">*</span> <span class="n">D</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;q&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;q&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">seqs</span><span class="p">):</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>        <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">ts</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">D</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>        <span class="n">prog</span> <span class="o">+=</span> <span class="p">[</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;RQ&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_KC</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">+</span> <span class="n">r</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_KA</span> <span class="o">+</span> <span class="n">j</span> <span class="o">*</span> <span class="n">D</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">D</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;k&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;k&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">]),</span> <span class="n">B_</span><span class="p">(</span><span class="s2">&quot;RQ&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_VC</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">+</span> <span class="n">r</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_VA</span> <span class="o">+</span> <span class="n">j</span> <span class="o">*</span> <span class="n">D</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">D</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;v&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;v&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">]),</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>                 <span class="n">B_</span><span class="p">(</span><span class="s2">&quot;ST&quot;</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_KC</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">+</span> <span class="n">r</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">EX_KC</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="n">r</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">D</span><span class="p">),</span> <span class="n">B_</span><span class="p">(</span><span class="s2">&quot;ST&quot;</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_VC</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">+</span> <span class="n">r</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">EX_VC</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="n">r</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">D</span><span class="p">)]</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">seqs</span><span class="p">):</span>                                                         <span class="c1"># attention, one sequence at a time</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>        <span class="n">L</span> <span class="o">=</span> <span class="n">ts</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">((</span><span class="n">L</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span> <span class="o">//</span> <span class="mi">4</span><span class="p">):</span> <span class="n">prog</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;MM&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_S</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">A</span><span class="o">=</span><span class="n">SP_Q8</span> <span class="o">+</span> <span class="n">j</span> <span class="o">*</span> <span class="n">D</span><span class="p">,</span> <span class="n">B</span><span class="o">=</span><span class="n">SP_KC</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">c</span> <span class="o">*</span> <span class="n">D</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="n">D</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">L</span> <span class="o">-</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">c</span><span class="p">),</span> <span class="n">tb</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">lda</span><span class="o">=</span><span class="n">D</span><span class="p">,</span> <span class="n">ldb</span><span class="o">=</span><span class="n">D</span><span class="p">,</span> <span class="n">ldc</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>        <span class="n">prog</span> <span class="o">+=</span> <span class="p">[</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;RQ&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_S8</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_S</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">L</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;scores&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;scores&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">]),</span> <span class="n">B_</span><span class="p">(</span><span class="s2">&quot;SM&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_P</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_S8</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">L</span><span class="p">),</span> <span class="n">B_</span><span class="p">(</span><span class="s2">&quot;RQ&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_WT</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_P</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">L</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;weights&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;weights&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">])]</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">D</span> <span class="o">//</span> <span class="mi">4</span><span class="p">):</span> <span class="n">prog</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;MM&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_O</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">A</span><span class="o">=</span><span class="n">SP_WT</span><span class="p">,</span> <span class="n">B</span><span class="o">=</span><span class="n">SP_VC</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="n">L</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">tb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">lda</span><span class="o">=</span><span class="n">L</span><span class="p">,</span> <span class="n">ldb</span><span class="o">=</span><span class="n">D</span><span class="p">,</span> <span class="n">ldc</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a>        <span class="n">prog</span> <span class="o">+=</span> <span class="p">[</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;RQ&quot;</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">SP_O8</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_O</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="n">D</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;out&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;out&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">]),</span> <span class="n">B_</span><span class="p">(</span><span class="s2">&quot;ST&quot;</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">SP_O8</span><span class="p">,</span> <span class="n">dst</span><span class="o">=</span><span class="n">EX_OUT</span><span class="p">(</span><span class="n">b</span><span class="p">),</span> <span class="nb">len</span><span class="o">=</span><span class="n">D</span><span class="p">)]</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a>    <span class="k">return</span> <span class="n">prog</span> <span class="o">+</span> <span class="p">[</span><span class="n">B_</span><span class="p">(</span><span class="s2">&quot;HALT&quot;</span><span class="p">)]</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a><span class="k">def</span> <span class="nf">outputs</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">seqs</span><span class="p">):</span> <span class="k">return</span> <span class="p">{</span><span class="n">b</span><span class="p">:</span> <span class="p">[</span><span class="n">I</span><span class="o">.</span><span class="n">s8</span><span class="p">(</span><span class="n">ext</span><span class="p">[</span><span class="n">EX_OUT</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">D</span><span class="p">)]</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">seqs</span><span class="p">}</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a><span class="k">def</span> <span class="nf">int_reference</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plain-Python integer result of sequence b at its t-th token (no instructions, no addresses).&quot;&quot;&quot;</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a>    <span class="n">s</span> <span class="o">=</span> <span class="n">ex</span><span class="p">[</span><span class="s2">&quot;scales&quot;</span><span class="p">];</span> <span class="n">P</span> <span class="o">=</span> <span class="n">rq_params</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a>    <span class="n">Xq</span> <span class="o">=</span> <span class="p">[[</span><span class="n">quantize</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">ex</span><span class="p">[</span><span class="s2">&quot;Xs&quot;</span><span class="p">][</span><span class="n">b</span><span class="p">][:</span><span class="n">t</span><span class="p">]];</span> <span class="n">Wq</span> <span class="o">=</span> <span class="p">[[[</span><span class="n">quantize</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">s</span><span class="p">[</span><span class="n">nm</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">W</span><span class="p">]</span> <span class="k">for</span> <span class="n">W</span><span class="p">,</span> <span class="n">nm</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ex</span><span class="p">[</span><span class="s2">&quot;W&quot;</span><span class="p">],</span> <span class="p">(</span><span class="s2">&quot;wq&quot;</span><span class="p">,</span> <span class="s2">&quot;wk&quot;</span><span class="p">,</span> <span class="s2">&quot;wv&quot;</span><span class="p">))]</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a>    <span class="n">rqm</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">M</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="p">[[</span><span class="n">requant</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="o">*</span><span class="n">P</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">M</span><span class="p">]</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a>    <span class="n">q8</span> <span class="o">=</span> <span class="n">rqm</span><span class="p">(</span><span class="n">matmul_int8</span><span class="p">([</span><span class="n">Xq</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]],</span> <span class="n">Wq</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="s2">&quot;q&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">];</span> <span class="n">K8</span> <span class="o">=</span> <span class="n">rqm</span><span class="p">(</span><span class="n">matmul_int8</span><span class="p">(</span><span class="n">Xq</span><span class="p">,</span> <span class="n">Wq</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="s2">&quot;k&quot;</span><span class="p">);</span> <span class="n">V8</span> <span class="o">=</span> <span class="n">rqm</span><span class="p">(</span><span class="n">matmul_int8</span><span class="p">(</span><span class="n">Xq</span><span class="p">,</span> <span class="n">Wq</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="s2">&quot;v&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a>    <span class="n">sc</span> <span class="o">=</span> <span class="p">[</span><span class="n">requant</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">q8</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">K8</span><span class="p">[</span><span class="n">p</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">D</span><span class="p">)),</span> <span class="o">*</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;scores&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">t</span><span class="p">)];</span> <span class="n">w</span> <span class="o">=</span> <span class="p">[</span><span class="n">requant</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="o">*</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;weights&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">softmax_fixed</span><span class="p">(</span><span class="n">sc</span><span class="p">)]</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a>    <span class="k">return</span> <span class="p">[</span><span class="n">requant</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">*</span> <span class="n">V8</span><span class="p">[</span><span class="n">p</span><span class="p">][</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">t</span><span class="p">)),</span> <span class="o">*</span><span class="n">P</span><span class="p">[</span><span class="s2">&quot;out&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">D</span><span class="p">)]</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a><span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">prog</span><span class="p">):</span> <span class="k">return</span> <span class="n">I</span><span class="o">.</span><span class="n">Machine</span><span class="p">(</span><span class="n">ext</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">prog</span><span class="p">)</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a><span class="k">def</span> <span class="nf">traffic</span><span class="p">(</span><span class="n">prog</span><span class="p">):</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;(MACs, words moved to or from external memory) of a program. One word is one int8 element in this design&#39;s logical accounting.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a>    <span class="n">macs</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s2">&quot;f&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;g&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;h&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">prog</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;MM&quot;</span><span class="p">);</span> <span class="n">words</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">i</span><span class="p">[</span><span class="s2">&quot;c&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">prog</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="s2">&quot;op&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;LD&quot;</span><span class="p">,</span> <span class="s2">&quot;ST&quot;</span><span class="p">));</span> <span class="k">return</span> <span class="n">macs</span><span class="p">,</span> <span class="n">words</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a><span class="k">def</span> <span class="nf">check_batching</span><span class="p">(</span><span class="n">nseq_list</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">lengths</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span> <span class="n">seeds</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">exact</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ragged</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Batch invariance: at every step, each sequence&#39;s output and cache rows must equal what the same sequence produces when decoded ALONE (batch of one). Also ragged batches (different lengths).</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a><span class="sd">    And each sequence decoded alone must equal the integer reference exactly (batch invariance alone is blind to a bug that the batch and the single run share). Returns the list of problems.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a>    <span class="n">problems</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89" href="#__codelineno-0-89"></a>    <span class="k">for</span> <span class="n">nseq</span> <span class="ow">in</span> <span class="n">nseq_list</span><span class="p">:</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90" href="#__codelineno-0-90"></a>        <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">lengths</span><span class="p">:</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a>            <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="n">seeds</span><span class="p">:</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92" href="#__codelineno-0-92"></a>                <span class="n">ex</span> <span class="o">=</span> <span class="n">make_batch</span><span class="p">(</span><span class="n">nseq</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="mi">7000</span> <span class="o">+</span> <span class="mi">31</span> <span class="o">*</span> <span class="n">nseq</span> <span class="o">+</span> <span class="mi">5</span> <span class="o">*</span> <span class="n">L</span> <span class="o">+</span> <span class="n">seed</span><span class="p">);</span> <span class="n">P</span> <span class="o">=</span> <span class="n">rq_params</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a>                <span class="n">ext_b</span> <span class="o">=</span> <span class="n">ext_image</span><span class="p">(</span><span class="n">ex</span><span class="p">);</span> <span class="n">ext_s</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">ext_image</span><span class="p">(</span><span class="n">ex</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nseq</span><span class="p">)];</span> <span class="n">seqs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">nseq</span><span class="p">))</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a>                <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">L</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95" href="#__codelineno-0-95"></a>                    <span class="n">m</span> <span class="o">=</span> <span class="n">run</span><span class="p">(</span><span class="n">ext_b</span><span class="p">,</span> <span class="n">program</span><span class="p">(</span><span class="n">seqs</span><span class="p">,</span> <span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">nseq</span><span class="p">,</span> <span class="n">P</span><span class="p">));</span> <span class="n">ext_b</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">ext</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a>                    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">seqs</span><span class="p">:</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97" href="#__codelineno-0-97"></a>                        <span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">run</span><span class="p">(</span><span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="n">program</span><span class="p">([</span><span class="n">b</span><span class="p">],</span> <span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">P</span><span class="p">))</span><span class="o">.</span><span class="n">ext</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98" href="#__codelineno-0-98"></a>                        <span class="k">if</span> <span class="n">outputs</span><span class="p">(</span><span class="n">ext_b</span><span class="p">,</span> <span class="p">[</span><span class="n">b</span><span class="p">])[</span><span class="n">b</span><span class="p">]</span> <span class="o">!=</span> <span class="n">outputs</span><span class="p">(</span><span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="p">[</span><span class="n">b</span><span class="p">])[</span><span class="n">b</span><span class="p">]:</span> <span class="n">problems</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;B=</span><span class="si">{</span><span class="n">nseq</span><span class="si">}</span><span class="s2"> L=</span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s2"> seed=</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2"> step </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">: sequence </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2"> output differs from decoding it alone&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99" href="#__codelineno-0-99"></a>                        <span class="k">if</span> <span class="n">ext_b</span><span class="p">[</span><span class="n">EX_KC</span><span class="p">(</span><span class="n">b</span><span class="p">):</span><span class="n">EX_KC</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="mi">256</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="n">EX_KC</span><span class="p">(</span><span class="n">b</span><span class="p">):</span><span class="n">EX_KC</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="mi">256</span><span class="p">]</span> <span class="ow">or</span> <span class="n">ext_b</span><span class="p">[</span><span class="n">EX_VC</span><span class="p">(</span><span class="n">b</span><span class="p">):</span><span class="n">EX_VC</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="mi">256</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">][</span><span class="n">EX_VC</span><span class="p">(</span><span class="n">b</span><span class="p">):</span><span class="n">EX_VC</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">+</span> <span class="mi">256</span><span class="p">]:</span> <span class="n">problems</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;B=</span><span class="si">{</span><span class="n">nseq</span><span class="si">}</span><span class="s2"> L=</span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s2"> seed=</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2"> step </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">: sequence </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2"> cache differs&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100" href="#__codelineno-0-100"></a>                        <span class="k">if</span> <span class="n">exact</span> <span class="ow">and</span> <span class="n">outputs</span><span class="p">(</span><span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="p">[</span><span class="n">b</span><span class="p">])[</span><span class="n">b</span><span class="p">]</span> <span class="o">!=</span> <span class="n">int_reference</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span> <span class="n">problems</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;B=</span><span class="si">{</span><span class="n">nseq</span><span class="si">}</span><span class="s2"> L=</span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s2"> seed=</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2"> step </span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">: sequence </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2"> decoded alone differs from the integer reference&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101" href="#__codelineno-0-101"></a>    <span class="c1"># ragged: sequences at different positions share one step</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102" href="#__codelineno-0-102"></a>    <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="p">(</span><span class="n">seeds</span> <span class="k">if</span> <span class="n">ragged</span> <span class="k">else</span> <span class="p">[]):</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103" href="#__codelineno-0-103"></a>        <span class="n">ex</span> <span class="o">=</span> <span class="n">make_batch</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">9100</span> <span class="o">+</span> <span class="n">seed</span><span class="p">);</span> <span class="n">P</span> <span class="o">=</span> <span class="n">rq_params</span><span class="p">(</span><span class="n">ex</span><span class="p">);</span> <span class="n">lens</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">14</span><span class="p">];</span> <span class="n">ext_b</span> <span class="o">=</span> <span class="n">ext_image</span><span class="p">(</span><span class="n">ex</span><span class="p">);</span> <span class="n">seqs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104" href="#__codelineno-0-104"></a>        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">seqs</span><span class="p">:</span>
+<a id="__codelineno-0-105" name="__codelineno-0-105" href="#__codelineno-0-105"></a>            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lens</span><span class="p">[</span><span class="n">b</span><span class="p">]):</span> <span class="n">ext_b</span> <span class="o">=</span> <span class="n">run</span><span class="p">(</span><span class="n">ext_b</span><span class="p">,</span> <span class="n">program</span><span class="p">([</span><span class="n">b</span><span class="p">],</span> <span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">P</span><span class="p">))</span><span class="o">.</span><span class="n">ext</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106" href="#__codelineno-0-106"></a>        <span class="n">ext_s</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">ext_b</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">seqs</span><span class="p">];</span> <span class="n">ext_b</span> <span class="o">=</span> <span class="n">run</span><span class="p">(</span><span class="n">ext_b</span><span class="p">,</span> <span class="n">program</span><span class="p">(</span><span class="n">seqs</span><span class="p">,</span> <span class="n">lens</span><span class="p">,</span> <span class="n">P</span><span class="p">))</span><span class="o">.</span><span class="n">ext</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107" href="#__codelineno-0-107"></a>        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">seqs</span><span class="p">:</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108" href="#__codelineno-0-108"></a>            <span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">run</span><span class="p">(</span><span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="n">program</span><span class="p">([</span><span class="n">b</span><span class="p">],</span> <span class="p">[</span><span class="n">lens</span><span class="p">[</span><span class="n">b</span><span class="p">]],</span> <span class="n">P</span><span class="p">))</span><span class="o">.</span><span class="n">ext</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109" href="#__codelineno-0-109"></a>            <span class="k">if</span> <span class="n">outputs</span><span class="p">(</span><span class="n">ext_b</span><span class="p">,</span> <span class="p">[</span><span class="n">b</span><span class="p">])[</span><span class="n">b</span><span class="p">]</span> <span class="o">!=</span> <span class="n">outputs</span><span class="p">(</span><span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="p">[</span><span class="n">b</span><span class="p">])[</span><span class="n">b</span><span class="p">]:</span> <span class="n">problems</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ragged seed=</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">: sequence </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2"> (length </span><span class="si">{</span><span class="n">lens</span><span class="p">[</span><span class="n">b</span><span class="p">]</span><span class="si">}</span><span class="s2">) differs from decoding it alone&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110" href="#__codelineno-0-110"></a>            <span class="k">if</span> <span class="n">exact</span> <span class="ow">and</span> <span class="n">outputs</span><span class="p">(</span><span class="n">ext_s</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="p">[</span><span class="n">b</span><span class="p">])[</span><span class="n">b</span><span class="p">]</span> <span class="o">!=</span> <span class="n">int_reference</span><span class="p">(</span><span class="n">ex</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">lens</span><span class="p">[</span><span class="n">b</span><span class="p">]):</span> <span class="n">problems</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ragged seed=</span><span class="si">{</span><span class="n">seed</span><span class="si">}</span><span class="s2">: sequence </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2"> differs from the integer reference&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111" href="#__codelineno-0-111"></a>    <span class="k">return</span> <span class="n">problems</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112" href="#__codelineno-0-112"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113" href="#__codelineno-0-113"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;problems:&quot;</span><span class="p">,</span> <span class="n">check_batching</span><span class="p">())</span>
+</code></pre></div>
+<p><code>program(seqs, ts, P)</code> builds one decode step for a list of sequences, with <code>ts[i]</code> tokens each (the lengths may differ: a server's requests arrive at different times). The projections are three loops of four <code>MM</code> instructions with <code>M = n</code>; the caches are per sequence; attention is a loop over sequences. <code>check_batching</code> is the test, explained below.</p>
+<h2 id="running-it-on-the-chip">Running it on the chip<a class="headerlink" href="#running-it-on-the-chip" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="sd">&quot;&quot;&quot;Chapter 9: batching and the bandwidth analysis. Batched decode steps on the RTL (both simulators), cycles and traffic per batch size, the roofline of GA-2, and a derived table for a large model. Usage: ch09_run.py&quot;&quot;&quot;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;GA2_EXT&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;8192&quot;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)));</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)),</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">))</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="kn">import</span> <span class="nn">hw</span><span class="o">,</span> <span class="nn">ga2_isa</span> <span class="k">as</span> <span class="nn">I</span><span class="o">,</span> <span class="nn">ga2_progs</span> <span class="k">as</span> <span class="nn">G</span><span class="o">,</span> <span class="nn">batch</span> <span class="k">as</span> <span class="nn">Bt</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">F</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;rtl/sram.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/dma.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/systolic.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/requant.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/exp_lut.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/divu.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/rowmem.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/ga2_vec.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/ga2_sm.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/ga2_mm.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/ga2.v&quot;</span><span class="p">,</span> <span class="s2">&quot;tb/extmem_rw.v&quot;</span><span class="p">,</span> <span class="s2">&quot;tb/ga2_tb.v&quot;</span><span class="p">]</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="k">def</span> <span class="nf">line</span><span class="p">(</span><span class="n">out</span><span class="p">):</span> <span class="k">return</span> <span class="p">([</span><span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="k">if</span> <span class="n">l</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">&quot;PASS&quot;</span><span class="p">,</span> <span class="s2">&quot;FAIL&quot;</span><span class="p">,</span> <span class="s2">&quot;MISMATCH&quot;</span><span class="p">))]</span> <span class="ow">or</span> <span class="n">out</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="o">-</span><span class="mi">2</span><span class="p">:])[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;== 1. batch invariance (Python): each sequence&#39;s result and cache are identical whether it is decoded alone or in a batch of 2, 3, 4, or in a ragged batch&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;problems:&quot;</span><span class="p">,</span> <span class="n">Bt</span><span class="o">.</span><span class="n">check_batching</span><span class="p">()</span> <span class="ow">or</span> <span class="s2">&quot;none&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 2. batched decode steps on the circuit: B sequences, all at their 16th token, then a ragged batch (lengths 3, 9, 1, 14)&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">progs</span> <span class="o">=</span> <span class="p">[];</span> <span class="n">meta</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="k">for</span> <span class="n">nseq</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="n">ex</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">make_batch</span><span class="p">(</span><span class="n">nseq</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">4242</span><span class="p">);</span> <span class="n">P</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">rq_params</span><span class="p">(</span><span class="n">ex</span><span class="p">);</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">ext_image</span><span class="p">(</span><span class="n">ex</span><span class="p">);</span> <span class="n">seqs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">nseq</span><span class="p">))</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">):</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">Bt</span><span class="o">.</span><span class="n">program</span><span class="p">(</span><span class="n">seqs</span><span class="p">,</span> <span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">nseq</span><span class="p">,</span> <span class="n">P</span><span class="p">))</span><span class="o">.</span><span class="n">ext</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="n">prog</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">program</span><span class="p">(</span><span class="n">seqs</span><span class="p">,</span> <span class="p">[</span><span class="mi">16</span><span class="p">]</span> <span class="o">*</span> <span class="n">nseq</span><span class="p">,</span> <span class="n">P</span><span class="p">);</span> <span class="n">progs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">prog</span><span class="p">,</span> <span class="n">ext</span><span class="p">));</span> <span class="n">meta</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="sa">f</span><span class="s2">&quot;B=</span><span class="si">{</span><span class="n">nseq</span><span class="si">}</span><span class="s2"> (all at token 16)&quot;</span><span class="p">,</span> <span class="n">nseq</span><span class="p">,</span> <span class="n">prog</span><span class="p">))</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="n">ex</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">make_batch</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">4343</span><span class="p">);</span> <span class="n">P</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">rq_params</span><span class="p">(</span><span class="n">ex</span><span class="p">);</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">ext_image</span><span class="p">(</span><span class="n">ex</span><span class="p">);</span> <span class="n">lens</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">14</span><span class="p">]</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lens</span><span class="p">[</span><span class="n">b</span><span class="p">]):</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">ext</span><span class="p">,</span> <span class="n">Bt</span><span class="o">.</span><span class="n">program</span><span class="p">([</span><span class="n">b</span><span class="p">],</span> <span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">P</span><span class="p">))</span><span class="o">.</span><span class="n">ext</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="n">prog</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">program</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">lens</span><span class="p">,</span> <span class="n">P</span><span class="p">);</span> <span class="n">progs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">prog</span><span class="p">,</span> <span class="n">ext</span><span class="p">));</span> <span class="n">meta</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;B=4 ragged (3, 9, 1, 14)&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">prog</span><span class="p">))</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">progs</span><span class="p">)]</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="k">for</span> <span class="n">prog</span><span class="p">,</span> <span class="n">ext</span> <span class="ow">in</span> <span class="n">progs</span><span class="p">:</span> <span class="n">words</span> <span class="o">+=</span> <span class="n">G</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="n">prog</span><span class="p">,</span> <span class="n">ext</span><span class="p">)</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">ROOT</span><span class="p">,</span> <span class="s2">&quot;out&quot;</span><span class="p">,</span> <span class="s2">&quot;ga2_programs.hex&quot;</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%08x</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">w</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFFFF</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="n">res</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">fn</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;Icarus&quot;</span><span class="p">,</span> <span class="n">hw</span><span class="o">.</span><span class="n">sim_icarus</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Verilator&quot;</span><span class="p">,</span> <span class="n">hw</span><span class="o">.</span><span class="n">sim_verilator</span><span class="p">)):</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>    <span class="n">rc</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="s2">&quot;ga2_tb&quot;</span><span class="p">,</span> <span class="n">defines</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;EXTW=8192&quot;</span><span class="p">,</span> <span class="s2">&quot;DUMP&quot;</span><span class="p">));</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">10s</span><span class="si">}{</span><span class="n">line</span><span class="p">(</span><span class="n">out</span><span class="p">)</span><span class="si">}</span><span class="s2"> (exit </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">re</span><span class="o">.</span><span class="n">finditer</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;COUNTERS (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span> <span class="n">res</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">1</span><span class="p">:]]</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 3. cycles, traffic and the roofline.  Peak compute = 16 MAC/cycle (a 4x4 array). Memory = 1 word per cycle once a transfer is under way (one word = one int8 element).&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;batch&#39;</span><span class="si">:</span><span class="s2">26s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;cycles&#39;</span><span class="si">:</span><span class="s2">&gt;7s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;per token&#39;</span><span class="si">:</span><span class="s2">&gt;9s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;MACs&#39;</span><span class="si">:</span><span class="s2">&gt;6s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;words&#39;</span><span class="si">:</span><span class="s2">&gt;6s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;MAC/word&#39;</span><span class="si">:</span><span class="s2">&gt;9s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;achieved&#39;</span><span class="si">:</span><span class="s2">&gt;9s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;ceiling&#39;</span><span class="si">:</span><span class="s2">&gt;8s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;of ceiling&#39;</span><span class="si">:</span><span class="s2">&gt;10s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;if loads overlapped&#39;</span><span class="si">:</span><span class="s2">&gt;20s</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">nseq</span><span class="p">,</span> <span class="n">prog</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">meta</span><span class="p">):</span>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>    <span class="n">tot</span><span class="p">,</span> <span class="n">mm</span><span class="p">,</span> <span class="n">dma</span><span class="p">,</span> <span class="n">vec</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">i</span><span class="p">];</span> <span class="n">macs</span><span class="p">,</span> <span class="n">wds</span> <span class="o">=</span> <span class="n">Bt</span><span class="o">.</span><span class="n">traffic</span><span class="p">(</span><span class="n">prog</span><span class="p">);</span> <span class="n">inten</span> <span class="o">=</span> <span class="n">macs</span> <span class="o">/</span> <span class="n">wds</span><span class="p">;</span> <span class="n">ceil</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">16.0</span><span class="p">,</span> <span class="n">inten</span> <span class="o">*</span> <span class="mf">1.0</span><span class="p">);</span> <span class="n">ach</span> <span class="o">=</span> <span class="n">macs</span> <span class="o">/</span> <span class="n">tot</span>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    <span class="n">ov</span> <span class="o">=</span> <span class="n">tot</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">dma</span><span class="p">,</span> <span class="n">tot</span> <span class="o">-</span> <span class="n">dma</span><span class="p">)</span>
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">26s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">tot</span><span class="si">:</span><span class="s2">7d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">tot</span><span class="o">/</span><span class="n">nseq</span><span class="si">:</span><span class="s2">9.0f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">macs</span><span class="si">:</span><span class="s2">6d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">wds</span><span class="si">:</span><span class="s2">6d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">inten</span><span class="si">:</span><span class="s2">9.2f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">ach</span><span class="si">:</span><span class="s2">9.3f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">ceil</span><span class="si">:</span><span class="s2">8.2f</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="mi">100</span><span class="o">*</span><span class="n">ach</span><span class="o">/</span><span class="n">ceil</span><span class="si">:</span><span class="s2">9.1f</span><span class="si">}</span><span class="s2">% </span><span class="si">{</span><span class="n">ov</span><span class="si">:</span><span class="s2">15.2f</span><span class="si">}</span><span class="s2">x faster&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   (&#39;per token&#39; = cycles / number of sequences in the batch; &#39;achieved&#39; = MACs / cycles; &#39;ceiling&#39; = min(peak, MAC/word x words/cycle); the last column is the best case if every load ran in the shadow of compute, derived from the counters, not built)&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 4. what batching can and cannot share (one step, L = 16 tokens per sequence; words from the programs, MACs counted from the MM instructions)&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a><span class="n">macs_proj</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">*</span> <span class="mi">16</span><span class="p">;</span> <span class="n">macs_att</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">*</span> <span class="mi">16</span><span class="p">;</span> <span class="n">words_w</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">*</span> <span class="mi">16</span><span class="p">;</span> <span class="n">words_seq</span> <span class="o">=</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">15</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">16</span>
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;shared by the batch  : weights </span><span class="si">{</span><span class="n">words_w</span><span class="si">}</span><span class="s2"> words; projections </span><span class="si">{</span><span class="n">macs_proj</span><span class="si">}</span><span class="s2"> MACs per sequence (these reuse the weights)&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;per sequence         : cache and I/O </span><span class="si">{</span><span class="n">words_seq</span><span class="si">}</span><span class="s2"> words; attention </span><span class="si">{</span><span class="n">macs_att</span><span class="si">}</span><span class="s2"> MACs&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a><span class="k">for</span> <span class="n">nseq</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">):</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  batch </span><span class="si">{</span><span class="n">nseq</span><span class="si">:</span><span class="s2">&gt;7d</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="p">(</span><span class="n">nseq</span><span class="o">*</span><span class="p">(</span><span class="n">macs_proj</span><span class="o">+</span><span class="n">macs_att</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">words_w</span><span class="o">+</span><span class="n">nseq</span><span class="o">*</span><span class="n">words_seq</span><span class="p">)</span><span class="si">:</span><span class="s2">5.2f</span><span class="si">}</span><span class="s2"> MAC/word&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  limit as the batch grows: </span><span class="si">{</span><span class="p">(</span><span class="n">macs_proj</span><span class="o">+</span><span class="n">macs_att</span><span class="p">)</span><span class="o">/</span><span class="n">words_seq</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MAC/word at L = 16;  as L grows the limit tends to 1: every cached word is used once per step.&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 5. derived, for a 7B-class model (7e9 weights; int8 cache of 256 KiB per token, 4096-token context = 1.07e9 bytes per sequence), ASSUMING a chip with 1 TB/s of memory bandwidth and ignoring compute and overheads&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   tokens per second per chip = B x BW / (weight bytes + B x cache bytes)&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a><span class="n">KV</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">32</span> <span class="o">*</span> <span class="mi">32</span> <span class="o">*</span> <span class="mi">128</span> <span class="o">*</span> <span class="mi">1</span> <span class="o">*</span> <span class="mi">4096</span><span class="p">;</span> <span class="n">BW</span> <span class="o">=</span> <span class="mf">1e12</span>
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;weights&#39;</span><span class="si">:</span><span class="s2">14s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;bytes&#39;</span><span class="si">:</span><span class="s2">&gt;8s</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;B=&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;8s</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">256</span><span class="p">))</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="s1">&#39;cache = weights at B&#39;</span><span class="si">:</span><span class="s2">&gt;22s</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">bpw</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;fp16&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;int8&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;int4&quot;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)):</span>
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>    <span class="n">Wb</span> <span class="o">=</span> <span class="mf">7e9</span> <span class="o">*</span> <span class="n">bpw</span><span class="p">;</span> <span class="n">row</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">b</span><span class="o">*</span><span class="n">BW</span><span class="o">/</span><span class="p">(</span><span class="n">Wb</span><span class="o">+</span><span class="n">b</span><span class="o">*</span><span class="n">KV</span><span class="p">)</span><span class="si">:</span><span class="s2">8.0f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">256</span><span class="p">));</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">14s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">Wb</span><span class="o">/</span><span class="mf">1e9</span><span class="si">:</span><span class="s2">6.1f</span><span class="si">}</span><span class="s2">GB </span><span class="si">{</span><span class="n">row</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">Wb</span><span class="o">/</span><span class="n">KV</span><span class="si">:</span><span class="s2">22.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   upper limit as B grows (cache-bound): </span><span class="si">{</span><span class="n">BW</span><span class="o">/</span><span class="n">KV</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> tokens/s per chip at a 4096-token int8 cache&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Output (cloud sandbox -- live-executed; Icarus Verilog 12.0, Verilator 5.020, Yosys 0.33)</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>== 1. batch invariance (Python): each sequence&#39;s result and cache are identical whether it is decoded alone or in a batch of 2, 3, 4, or in a ragged batch
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>problems: none
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>== 2. batched decode steps on the circuit: B sequences, all at their 16th token, then a ragged batch (lengths 3, 9, 1, 14)
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  Icarus    PASS: 5 programs match the Python reference (memory and all five cycle counters), 33460 cycles in total (exit status 0) (exit 0)
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  Verilator PASS: 5 programs match the Python reference (memory and all five cycle counters), 33460 cycles in total (exit status 0) (exit 0)
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>== 3. cycles, traffic and the roofline.  Peak compute = 16 MAC/cycle (a 4x4 array). Memory = 1 word per cycle once a transfer is under way (one word = one int8 element).
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>batch                       cycles per token   MACs  words  MAC/word  achieved  ceiling of ceiling  if loads overlapped
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>B=1 (all at token 16)         3827      3827   1280   1312      0.98     0.334     0.98      34.3%            1.55x faster
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>B=2 (all at token 16)         5777      2888   2560   1856      1.38     0.443     1.38      32.1%            1.50x faster
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>B=3 (all at token 16)         7727      2576   3840   2400      1.60     0.497     1.60      31.1%            1.48x faster
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>B=4 (all at token 16)         9677      2419   5120   2944      1.74     0.529     1.74      30.4%            1.47x faster
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>B=4 ragged (3, 9, 1, 14)      6452      1613   3936   1760      2.24     0.610     2.24      27.3%            1.41x faster
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>   (&#39;per token&#39; = cycles / number of sequences in the batch; &#39;achieved&#39; = MACs / cycles; &#39;ceiling&#39; = min(peak, MAC/word x words/cycle); the last column is the best case if every load ran in the shadow of compute, derived from the counters, not built)
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>== 4. what batching can and cannot share (one step, L = 16 tokens per sequence; words from the programs, MACs counted from the MM instructions)
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>shared by the batch  : weights 768 words; projections 768 MACs per sequence (these reuse the weights)
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>per sequence         : cache and I/O 544 words; attention 512 MACs
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>  batch       1:  0.98 MAC/word
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>  batch       2:  1.38 MAC/word
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>  batch       4:  1.74 MAC/word
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>  batch      16:  2.16 MAC/word
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>  batch      64:  2.30 MAC/word
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>  batch 1000000:  2.35 MAC/word
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>  limit as the batch grows: 2.35 MAC/word at L = 16;  as L grows the limit tends to 1: every cached word is used once per step.
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>== 5. derived, for a 7B-class model (7e9 weights; int8 cache of 256 KiB per token, 4096-token context = 1.07e9 bytes per sequence), ASSUMING a chip with 1 TB/s of memory bandwidth and ignoring compute and overheads
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>   tokens per second per chip = B x BW / (weight bytes + B x cache bytes)
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>weights           bytes      B=1      B=4     B=16     B=64    B=256   cache = weights at B
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>fp16             14.0GB       66      219      513      774      886                   13.0
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>int8              7.0GB      124      354      662      845      908                    6.5
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>int4              3.5GB      219      513      774      886      920                    3.3
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>   upper limit as B grows (cache-bound): 931 tokens/s per chip at a 4096-token int8 cache
+</code></pre></div>
+<h3 id="reading-it">Reading it<a class="headerlink" href="#reading-it" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>The batched programs run correctly on the chip</strong> (five programs, both simulators, memory and cycle counters exactly as the reference), including a ragged batch where four requests are at tokens 3, 9, 1 and 14 in the same step.</li>
+<li><strong>Batching helps, by less than you might hope.</strong> Cycles per token fall from 3,827 (batch of 1) to 2,419 (batch of 4), a 1.58x gain, and the MACs per word rise from 0.98 to 1.74. The projections are shared, but the attention work, which does not shrink, becomes the bulk of the step.</li>
+<li><strong>The words moved per step follow a formula, and the measured programs match it exactly</strong>: <code>768 + 544 B</code> (768 words of weights, loaded once; 544 words of cache and input/output per sequence at L = 16): 1,312 for one request, 2,944 for four, as measured. Section 4 extends the formula: with an unlimited batch the intensity tends to 2.35 MACs per word at L = 16, and <strong>to 1 as the context grows</strong>, because each cached key and value is used for exactly one multiply per step. No batch size gets attention across the ridge point.</li>
+<li><strong>The achieved speed is about a third of the memory ceiling and rises no higher.</strong> <code>achieved</code> (MACs per cycle) is 0.33 to 0.53; the <code>ceiling</code> is the intensity itself, 0.98 to 1.74. About 30% of it is reached, whatever the batch. The reasons are in Chapter 7: instructions run one at a time (a load never overlaps a compute), and the matrix unit stages operands before streaming them. The last column estimates what overlapping would give if every load ran in the shadow of compute: <strong>1.4x to 1.55x faster</strong>. That is derived from the counters (total divided by the larger of the DMA and non-DMA times), not built, and the gain would be the double buffering of Chapter 5.</li>
+</ul>
+<h2 id="what-it-means-for-a-real-model-derived-with-an-assumed-chip">What it means for a real model (derived, with an assumed chip)<a class="headerlink" href="#what-it-means-for-a-real-model-derived-with-an-assumed-chip" title="Permanent link">&para;</a></h2>
+<p>The last table is arithmetic, not a measurement, and it assumes a chip with 1 TB/s of memory bandwidth that is limited only by memory traffic. Tokens per second per chip is <code>B x BW / (weight bytes + B x cache bytes)</code> for a 7B-class model with an int8 cache of 256 KiB per token and a 4,096-token context (1.07 GB per request):</p>
+<ul>
+<li>At batch 1, the speed is set by the weights alone: 66, 124 and 219 tokens/s for fp16, int8 and int4 weights. <strong>Halving the bytes per weight doubles the speed</strong>, which is why inference chips push to 8 and 4 bits.</li>
+<li>As the batch grows, throughput rises and then <strong>flattens at 931 tokens/s per chip</strong>, whatever the weights: the cache of each request must be read once per token, and that traffic does not amortize.</li>
+<li>The <strong>cache equals the weights in size at a batch of 13 (fp16), 6.5 (int8) and 3.3 (int4)</strong>. Quantizing the weights more aggressively makes batching run out of road sooner. This is why long-context serving is limited by the size and bandwidth of the KV cache, and why techniques that shrink the cache (fewer key-value heads shared by many query heads, a smaller cache dtype, evicting old tokens) matter as much as ones that shrink the weights.</li>
+</ul>
+<h2 id="testing-the-tests-batch-invariance">Testing the tests: batch invariance<a class="headerlink" href="#testing-the-tests-batch-invariance" title="Permanent link">&para;</a></h2>
+<p>A batched program is easy to get subtly wrong: a row index off, a cache in the wrong slot, a length taken from the wrong request. The test that finds all of these has a beautiful form that needs no knowledge of the arithmetic: <strong>a request must produce the same output and the same cache rows whether it is decoded alone or in a batch with others.</strong> <code>check_batching</code> runs batches of 1 to 4 and a ragged batch, compares every sequence with the same sequence decoded alone at every step, and also compares each sequence decoded alone with the integer reference.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="sd">&quot;&quot;&quot;Chapter 9: test the tests of the batched program builder (model/batch.py). The check is BATCH INVARIANCE: each sequence&#39;s output and cache rows must equal what the same sequence gives when decoded alone, for batches of 1 to 4 and for a ragged batch;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="sd">a batch of one must also equal the integer reference. Each mutant breaks one line of the builder; &#39;caught&#39; means the check reports a problem or crashes.&quot;&quot;&quot;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kn">import</span> <span class="nn">concurrent.futures</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">shutil</span><span class="o">,</span> <span class="nn">subprocess</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">tempfile</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">ROOT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)));</span> <span class="n">SRC</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ROOT</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;batch.py&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">M</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a> <span class="p">(</span><span class="s2">&quot;projection runs on one row (M = 1) instead of the whole batch&quot;</span><span class="p">,</span> <span class="s2">&quot;A=SP_X, B=SP_W + 256 * wi + 4 * c, M=n,&quot;</span><span class="p">,</span> <span class="s2">&quot;A=SP_X, B=SP_W + 256 * wi + 4 * c, M=1,&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a> <span class="p">(</span><span class="s2">&quot;projection results are stored with row stride 4, not d&quot;</span><span class="p">,</span> <span class="s2">&quot;tb=0, lda=DM, ldb=D, ldc=D))&quot;</span><span class="p">,</span> <span class="s2">&quot;tb=0, lda=DM, ldb=D, ldc=4))&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a> <span class="p">(</span><span class="s2">&quot;every new key is taken from row 0 of the projection&quot;</span><span class="p">,</span> <span class="s2">&quot;src=SP_KA + j * D, len=D&quot;</span><span class="p">,</span> <span class="s2">&quot;src=SP_KA, len=D&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a> <span class="p">(</span><span class="s2">&quot;every new value is taken from row 0 of the projection&quot;</span><span class="p">,</span> <span class="s2">&quot;src=SP_VA + j * D, len=D&quot;</span><span class="p">,</span> <span class="s2">&quot;src=SP_VA, len=D&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a> <span class="p">(</span><span class="s2">&quot;every sequence&#39;s cache lives in batch slot 0&quot;</span><span class="p">,</span> <span class="s2">&quot;def SP_KC(j): return 1280 + 512 * j&quot;</span><span class="p">,</span> <span class="s2">&quot;def SP_KC(j): return 1280&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a> <span class="p">(</span><span class="s2">&quot;the value caches of all sequences overlap&quot;</span><span class="p">,</span> <span class="s2">&quot;def SP_VC(j): return 1280 + 512 * j + 256&quot;</span><span class="p">,</span> <span class="s2">&quot;def SP_VC(j): return 1280 + 256 * j + 256&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a> <span class="p">(</span><span class="s2">&quot;sequence j attends with the query of row 0&quot;</span><span class="p">,</span> <span class="s2">&quot;A=SP_Q8 + j * D, B=SP_KC(j)&quot;</span><span class="p">,</span> <span class="s2">&quot;A=SP_Q8, B=SP_KC(j)&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a> <span class="p">(</span><span class="s2">&quot;hidden states are all loaded into slot 0&quot;</span><span class="p">,</span> <span class="s2">&quot;dst=SP_X + j * DM, src=EX_X(b)&quot;</span><span class="p">,</span> <span class="s2">&quot;dst=SP_X, src=EX_X(b)&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a> <span class="p">(</span><span class="s2">&quot;every sequence reads the hidden state of sequence 0&quot;</span><span class="p">,</span> <span class="s2">&quot;src=EX_X(b) + (ts[j] - 1) * DM&quot;</span><span class="p">,</span> <span class="s2">&quot;src=EX_X(0) + (ts[j] - 1) * DM&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a> <span class="p">(</span><span class="s2">&quot;outputs are all stored in sequence 0&#39;s output slot&quot;</span><span class="p">,</span> <span class="s2">&quot;B_(</span><span class="se">\&quot;</span><span class="s2">ST</span><span class="se">\&quot;</span><span class="s2">, src=SP_O8, dst=EX_OUT(b), len=D)&quot;</span><span class="p">,</span> <span class="s2">&quot;B_(</span><span class="se">\&quot;</span><span class="s2">ST</span><span class="se">\&quot;</span><span class="s2">, src=SP_O8, dst=EX_OUT(0), len=D)&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a> <span class="p">(</span><span class="s2">&quot;the new key is appended at the first sequence&#39;s position&quot;</span><span class="p">,</span> <span class="s2">&quot;r = (ts[j] - 1) * D&quot;</span><span class="p">,</span> <span class="s2">&quot;r = (ts[0] - 1) * D&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a> <span class="p">(</span><span class="s2">&quot;the value cache is loaded from the key cache&quot;</span><span class="p">,</span> <span class="s2">&quot;B_(</span><span class="se">\&quot;</span><span class="s2">LD</span><span class="se">\&quot;</span><span class="s2">, dst=SP_VC(j), src=EX_VC(b)&quot;</span><span class="p">,</span> <span class="s2">&quot;B_(</span><span class="se">\&quot;</span><span class="s2">LD</span><span class="se">\&quot;</span><span class="s2">, dst=SP_VC(j), src=EX_KC(b)&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a> <span class="p">(</span><span class="s2">&quot;the new value is appended to the key cache in external memory&quot;</span><span class="p">,</span> <span class="s2">&quot;B_(</span><span class="se">\&quot;</span><span class="s2">ST</span><span class="se">\&quot;</span><span class="s2">, src=SP_VC(j) + r, dst=EX_VC(b) + r&quot;</span><span class="p">,</span> <span class="s2">&quot;B_(</span><span class="se">\&quot;</span><span class="s2">ST</span><span class="se">\&quot;</span><span class="s2">, src=SP_VC(j) + r, dst=EX_KC(b) + r&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a> <span class="p">(</span><span class="s2">&quot;attention length of every sequence is the first sequence&#39;s&quot;</span><span class="p">,</span> <span class="s2">&quot;L = ts[j]</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;L = ts[0]</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a> <span class="p">(</span><span class="s2">&quot;the q requantization covers only one row&quot;</span><span class="p">,</span> <span class="s2">&quot;src=SP_QA, len=n * D&quot;</span><span class="p">,</span> <span class="s2">&quot;src=SP_QA, len=D&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a> <span class="p">(</span><span class="s2">&quot;a sequence&#39;s cache is loaded with the first sequence&#39;s length&quot;</span><span class="p">,</span> <span class="s2">&quot;len=(ts[j] - 1) * D), B_(</span><span class="se">\&quot;</span><span class="s2">LD</span><span class="se">\&quot;</span><span class="s2">, dst=SP_VC(j), src=EX_VC(b), len=(ts[j] - 1) * D)&quot;</span><span class="p">,</span> <span class="s2">&quot;len=(ts[0] - 1) * D), B_(</span><span class="se">\&quot;</span><span class="s2">LD</span><span class="se">\&quot;</span><span class="s2">, dst=SP_VC(j), src=EX_VC(b), len=(ts[j] - 1) * D)&quot;</span><span class="p">),</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="p">]</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="k">def</span> <span class="nf">check</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">ragged</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>    <span class="k">if</span> <span class="n">SRC</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">old</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span> <span class="k">return</span> <span class="n">label</span><span class="p">,</span> <span class="s2">&quot;BAD ANCHOR (</span><span class="si">%d</span><span class="s2"> occurrences)&quot;</span> <span class="o">%</span> <span class="n">SRC</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">old</span><span class="p">)</span>
+<a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>    <span class="n">d</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;mut9_&quot;</span><span class="p">);</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ROOT</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">));</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="s2">&quot;batch.py&quot;</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">SRC</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">old</span><span class="p">,</span> <span class="n">new</span><span class="p">))</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>    <span class="n">r</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="s2">&quot;-c&quot;</span><span class="p">,</span> <span class="s2">&quot;import sys; sys.path.insert(0,&#39;model&#39;); import batch; p=batch.check_batching(ragged=</span><span class="si">%s</span><span class="s2">); sys.exit(1 if p else 0)&quot;</span> <span class="o">%</span> <span class="n">ragged</span><span class="p">],</span> <span class="n">cwd</span><span class="o">=</span><span class="n">d</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">600</span><span class="p">);</span> <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>    <span class="k">return</span> <span class="n">label</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span>
+<a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;NOTE: this script deliberately breaks copies of the batched program builder. &#39;caught&#39; is EXPECTED: it shows batch invariance notices the mistake.&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a><span class="k">with</span> <span class="n">concurrent</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+<a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>    <span class="n">rows</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="n">check</span><span class="p">(</span><span class="o">*</span><span class="n">m</span><span class="p">),</span> <span class="n">M</span><span class="p">));</span> <span class="n">rows2</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="n">check</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="kc">False</span><span class="p">),</span> <span class="n">M</span><span class="p">))</span>
+<a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a><span class="n">n</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">n2</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;&#39;</span><span class="si">:</span><span class="s2">75s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;full check&#39;</span><span class="si">:</span><span class="s2">&gt;11s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;no ragged batch&#39;</span><span class="si">:</span><span class="s2">&gt;16s</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a><span class="k">for</span> <span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">r</span><span class="p">),</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">r2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">rows2</span><span class="p">):</span>
+<a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">:</span><span class="s2">75s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;caught&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="kc">True</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;NOT CAUGHT&#39;</span><span class="si">:</span><span class="s2">&gt;11s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;caught&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">r2</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="kc">True</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;NOT CAUGHT&#39;</span><span class="si">:</span><span class="s2">&gt;16s</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">);</span> <span class="n">n</span> <span class="o">+=</span> <span class="n">r</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">;</span> <span class="n">n2</span> <span class="o">+=</span> <span class="n">r2</span> <span class="ow">is</span> <span class="kc">True</span>
+<a id="__codelineno-3-36" name="__codelineno-3-36" href="#__codelineno-3-36"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">batched builder: </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">M</span><span class="p">)</span><span class="si">}</span><span class="s2"> broken programs caught by the full check; </span><span class="si">{</span><span class="n">n2</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">M</span><span class="p">)</span><span class="si">}</span><span class="s2"> if the ragged batch (different lengths in one step) is left out&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-37" name="__codelineno-3-37" href="#__codelineno-3-37"></a><span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">M</span><span class="p">)</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Output (cloud sandbox -- live-executed)</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>NOTE: this script deliberately breaks copies of the batched program builder. &#39;caught&#39; is EXPECTED: it shows batch invariance notices the mistake.
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>                                                                             full check  no ragged batch
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>projection runs on one row (M = 1) instead of the whole batch                    caught           caught
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>projection results are stored with row stride 4, not d                           caught           caught
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>every new key is taken from row 0 of the projection                              caught           caught
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>every new value is taken from row 0 of the projection                            caught           caught
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>every sequence&#39;s cache lives in batch slot 0                                     caught           caught
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>the value caches of all sequences overlap                                        caught           caught
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>sequence j attends with the query of row 0                                       caught           caught
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>hidden states are all loaded into slot 0                                         caught           caught
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>every sequence reads the hidden state of sequence 0                              caught           caught
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>outputs are all stored in sequence 0&#39;s output slot                               caught           caught
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>the new key is appended at the first sequence&#39;s position                         caught       NOT CAUGHT
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>the value cache is loaded from the key cache                                     caught           caught
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>the new value is appended to the key cache in external memory                    caught           caught
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>attention length of every sequence is the first sequence&#39;s                       caught       NOT CAUGHT
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>the q requantization covers only one row                                         caught           caught
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>a sequence&#39;s cache is loaded with the first sequence&#39;s length                    caught       NOT CAUGHT
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>batched builder: 16 of 16 broken programs caught by the full check; 13 of 16 if the ragged batch (different lengths in one step) is left out
+</code></pre></div>
+<p>All 16 broken builders are caught, and the second column shows what each part of the test is worth:</p>
+<ul>
+<li>Without the <strong>ragged batch</strong> (sequences of different lengths in one step) three mutants survive: <em>"attention length of every sequence is the first sequence's"</em>, <em>"the new key is appended at the first sequence's position"</em> and <em>"a sequence's cache is loaded with the first sequence's length"</em>. In a batch where every sequence has the same length, the first sequence's length is everybody's length, so these bugs are invisible. Ragged batches are what real servers have.</li>
+<li>An earlier version of the test checked the integer reference only for a batch of one, i.e. only for sequence 0. The mutant <em>"every sequence reads the hidden state of sequence 0"</em> then passed in lock-step batches: the batched run and the single run <strong>shared the bug</strong>, so they agreed, and only sequence 0 was compared with the reference. Checking every sequence against the reference closed the hole (it is the version in <code>model/batch.py</code> above). Batch invariance is a strong oracle, but like any comparison between two things built from the same code it is blind to a bug that both contain.</li>
+</ul>
+<h2 id="what-this-chapter-does-and-does-not-establish">What this chapter does and does not establish<a class="headerlink" href="#what-this-chapter-does-and-does-not-establish" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Measured on the chip</strong>: batched decode steps for 1 to 4 sequences (L = 16) and a ragged batch, with exact agreement with the reference simulator; cycles per token, words moved, and MACs per word.</li>
+<li><strong>Derived, not built</strong>: the estimate of 1.4x to 1.55x from overlapping loads with compute; the limit of 2.35 MACs per word (and 1 for long contexts); the tokens-per-second table for a 7B-class model on an assumed 1 TB/s chip.</li>
+<li><strong>Not covered</strong>: more than four sequences (the scratchpad layout holds four), contexts above 16 tokens in the batched layout, compute-bound phases (prefill, with long matrix products, is the opposite case and sits near the ridge), and real DRAM behaviour.</li>
+</ul>
+<h2 id="chapter-summary">Chapter summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>A decode step uses each weight once, so its arithmetic intensity is about 1 MAC per byte against a ridge point of 16: memory-bound, on this chip and any other. Batching stacks requests into one matrix product so the weights are read once, which raised the speed per token by 1.58x at a batch of 4; it cannot touch attention, whose traffic is each request's own KV cache. The cache, not the weights, is what bounds throughput at large batch and long context. A batched program is tested by the invariance of each request to its company, with a ragged batch, plus an exact reference for each sequence alone.</p>
+<h2 id="self-check-questions">Self-check questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>What is GA-2's ridge point, and which side of it is a decode step on?</li>
+<li>The words moved per step are <code>768 + 544 B</code>. Where do 768 and 544 come from?</li>
+<li>Why does the batch's MAC-per-word figure approach 2.35 but not 16?</li>
+<li>Using the table, at what batch size does the KV cache equal the weights for int8 weights, and what does that say about adding more batch beyond it?</li>
+<li>Why did the first version of the batch test miss "every sequence reads the hidden state of sequence 0", and what fixed it?</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

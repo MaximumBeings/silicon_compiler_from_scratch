@@ -1,0 +1,1363 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A systolic array in Verilog, int8 quantization, KV cache and batching, bandwidth analysis, a Yosys synthesis flow, and a compiler from a model graph to the chip. Open-source tools only.">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../../part04/04-systolic-array/">
+      
+      
+        <link rel="next" href="../../part06/06-vector-unit-softmax/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>5. The Scratchpad, the DMA Engine, and Double Buffering - Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#5-the-scratchpad-the-dma-engine-and-double-buffering" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-header__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              5. The Scratchpad, the DMA Engine, and Double Buffering
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-nav__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/01-the-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. The Flow: One Circuit Through Four Tools, and a Way to Test the Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part02/02-mac-and-number-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part03/03-quantization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part04/04-systolic-array/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. The Systolic Array: N x N Multiplies Per Cycle, and the Schedule That Makes It Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. The Scratchpad, the DMA Engine, and Double Buffering
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. The Scratchpad, the DMA Engine, and Double Buffering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-problem-compute-is-fast-memory-is-slow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The problem: compute is fast, memory is slow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-scratchpad-rtlsramv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The scratchpad: rtl/sram.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-dma-engine-rtldmav" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The DMA engine: rtl/dma.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-controller-rtldbufv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The controller: rtl/dbuf.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-schedule-model-modeldbuf_goldpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The schedule model: model/dbuf_gold.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-testbench-and-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The testbench and the run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The testbench and the run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-the-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-chapter-does-and-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this chapter does and does not establish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part06/06-vector-unit-softmax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. The Vector Unit: A Lookup-Table Exponential, a Divider, and Fixed-Point Softmax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part07/07-the-whole-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. GA-2: An Instruction Set, a Sequencer, and the Whole Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part08/08-attention-kv-cache/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Attention and the KV Cache: One Decode Step, From Hidden State to Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part09/09-batching-and-bandwidth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part10/10-synthesis-and-gate-level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. Synthesis, Timing and Gate-Level Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../answers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Answers to the Self-Check Questions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-problem-compute-is-fast-memory-is-slow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The problem: compute is fast, memory is slow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-scratchpad-rtlsramv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The scratchpad: rtl/sram.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-dma-engine-rtldmav" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The DMA engine: rtl/dma.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-controller-rtldbufv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The controller: rtl/dbuf.v
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-schedule-model-modeldbuf_goldpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The schedule model: model/dbuf_gold.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-testbench-and-the-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The testbench and the run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The testbench and the run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-the-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing the tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-chapter-does-and-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this chapter does and does not establish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-check-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-check questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="5-the-scratchpad-the-dma-engine-and-double-buffering">5. The Scratchpad, the DMA Engine, and Double Buffering<a class="headerlink" href="#5-the-scratchpad-the-dma-engine-and-double-buffering" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand:</strong> why an accelerator has its own small memory instead of a cache, how a DMA engine moves data without the compute units waiting on it, and how <strong>double buffering</strong> hides memory latency behind arithmetic. You will build all three, derive the cycle count of the whole stream as a formula, check the formula against the circuit to the cycle on eight shapes, and see which shapes of test are needed to catch the bugs in the controller.</p>
+<p><strong>What you need to know first:</strong> Chapters 1-4. No new arithmetic: this chapter is about <em>time</em>.</p>
+<h2 id="the-problem-compute-is-fast-memory-is-slow">The problem: compute is fast, memory is slow<a class="headerlink" href="#the-problem-compute-is-fast-memory-is-slow" title="Permanent link">&para;</a></h2>
+<p>The systolic array of Chapter 4 consumes new operands every cycle. External memory (DRAM) answers a request only many cycles later (its <strong>latency</strong>), though it can accept a new request every cycle (it is <em>pipelined</em>). If the array asks for data and waits, it spends most of its life waiting. The accelerator therefore has:</p>
+<ul>
+<li>a <strong>scratchpad</strong>: a small on-chip memory the <em>program</em> manages explicitly (unlike a cache, which guesses). Its read takes one cycle, always.</li>
+<li>a <strong>DMA engine</strong> (direct memory access): a little state machine that copies a block from external memory into the scratchpad on command, so nothing else has to be involved.</li>
+<li>a <strong>controller</strong> that overlaps the two: while the compute unit works on the tile in one half of the scratchpad, the DMA fills the other half with the next tile. That is <strong>double buffering</strong>.</li>
+</ul>
+<h2 id="the-scratchpad-rtlsramv">The scratchpad: <code>rtl/sram.v</code><a class="headerlink" href="#the-scratchpad-rtlsramv" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// Chapter 5: an on-chip memory (a scratchpad). One write port and one read port; the read is SYNCHRONOUS: the address is presented in one cycle and the data appears in the next.</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">// If a read and a write hit the same address in the same cycle, the read returns the OLD value (read-before-write), which is what the real memory macros do and what the controller relies on never happening.</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">module</span><span class="w"> </span><span class="n">sram</span><span class="w"> </span><span class="p">#(</span><span class="k">parameter</span><span class="w"> </span><span class="n">W</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">32</span><span class="p">,</span><span class="w"> </span><span class="n">AW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">8</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="n">clk</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">we</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">waddr</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="n">W</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">wdata</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">raddr</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="n">W</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">rdata</span><span class="p">);</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="n">W</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">mem</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="p">(</span><span class="mh">1</span><span class="o">&lt;&lt;</span><span class="n">AW</span><span class="p">)</span><span class="o">-</span><span class="mh">1</span><span class="p">];</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">we</span><span class="p">)</span><span class="w"> </span><span class="n">mem</span><span class="p">[</span><span class="n">waddr</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">wdata</span><span class="p">;</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">        </span><span class="n">rdata</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">mem</span><span class="p">[</span><span class="n">raddr</span><span class="p">];</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>One write port, one read port, synchronous read: the address goes in, the data comes out <em>next cycle</em>. If a read and a write hit the same address in the same cycle, the read returns the old value. The controller below is designed so that it never relies on that.</p>
+<h2 id="the-dma-engine-rtldmav">The DMA engine: <code>rtl/dma.v</code><a class="headerlink" href="#the-dma-engine-rtldmav" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// Chapter 5: a DMA engine. It copies len words from external memory (word address src) into the scratchpad (word address dst) without the processor touching each word.</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">// External interface: every cycle the engine may present a request (req_valid, req_addr); the answer (resp_valid, resp_data) arrives a fixed number of cycles later, and requests are pipelined, so the engine keeps issuing without waiting.</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1">// Cycles for one transfer = len (issue) + latency + a few cycles of control; that is the whole cost model, and the double-buffered controller exists to hide it.</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">module</span><span class="w"> </span><span class="n">dma</span><span class="w"> </span><span class="p">#(</span><span class="k">parameter</span><span class="w"> </span><span class="n">AW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">8</span><span class="p">,</span><span class="w"> </span><span class="n">XW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">16</span><span class="p">)</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="k">input</span><span class="w"> </span><span class="n">clk</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">rst</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">start</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="n">XW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">dst</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">len</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="n">busy</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="n">done</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="n">req_valid</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="n">XW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">req_addr</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">resp_valid</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">resp_data</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="n">sram_we</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">sram_waddr</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">sram_wdata</span><span class="p">);</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="n">XW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">src_r</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">dst_r</span><span class="p">,</span><span class="w"> </span><span class="n">len_r</span><span class="p">,</span><span class="w"> </span><span class="n">issued</span><span class="p">,</span><span class="w"> </span><span class="n">recvd</span><span class="p">;</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">req_valid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">busy</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">issued</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">len_r</span><span class="p">;</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">req_addr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">src_r</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">issued</span><span class="p">;</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">sram_we</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resp_valid</span><span class="p">;</span><span class="w"> </span><span class="k">assign</span><span class="w"> </span><span class="n">sram_waddr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">dst_r</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">recvd</span><span class="p">;</span><span class="w"> </span><span class="k">assign</span><span class="w"> </span><span class="n">sram_wdata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resp_data</span><span class="p">;</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">        </span><span class="n">done</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rst</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">busy</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span><span class="w"> </span><span class="n">issued</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">recvd</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">start</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">busy</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">busy</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b1</span><span class="p">;</span><span class="w"> </span><span class="n">src_r</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">src</span><span class="p">;</span><span class="w"> </span><span class="n">dst_r</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">dst</span><span class="p">;</span><span class="w"> </span><span class="n">len_r</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">len</span><span class="p">;</span><span class="w"> </span><span class="n">issued</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">recvd</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">busy</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">issued</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">len_r</span><span class="p">)</span><span class="w"> </span><span class="n">issued</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">issued</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">resp_valid</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">                </span><span class="n">recvd</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">recvd</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">recvd</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">len_r</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">busy</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span><span class="w"> </span><span class="n">done</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b1</span><span class="p">;</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">            </span><span class="k">end</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">        </span><span class="k">end</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>On <code>start</code> it remembers a source address, a destination and a length. Every cycle it issues the next request; every answer, which arrives <code>LAT</code> cycles later, is written to the scratchpad at the next destination address. When the last answer is written it pulses <code>done</code>. Because requests are pipelined, a transfer of <code>len</code> words takes about <code>len + LAT</code> cycles, not <code>len * LAT</code>.</p>
+<h2 id="the-controller-rtldbufv">The controller: <code>rtl/dbuf.v</code><a class="headerlink" href="#the-controller-rtldbufv" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Chapter 5: stream T tiles of TILE words from external memory, sum each tile, and report the sums, with the load of the next tile hidden behind the compute of the current one.</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">//   Two banks of the scratchpad hold two tiles. dbl = 1: tile n is loaded into bank n%2 as soon as that bank is EMPTY, while the other bank is being computed on (double buffering).</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">//   dbl = 0: a load may start only when nothing is full and nothing is computing (serial: load, compute, load, compute...).</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">//   A bank is marked empty only when the compute on it has FINISHED, so a load can never overwrite data that is still being read.</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">//   Compute reads one word every CPW cycles (CPW models how long the arithmetic takes per word) and adds it into a 32-bit sum.</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="k">module</span><span class="w"> </span><span class="n">dbuf</span><span class="w"> </span><span class="p">#(</span><span class="k">parameter</span><span class="w"> </span><span class="n">TILE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">16</span><span class="p">,</span><span class="w"> </span><span class="n">CPW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="n">AW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">8</span><span class="p">,</span><span class="w"> </span><span class="n">XW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">16</span><span class="p">)</span><span class="w"> </span><span class="p">(</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="k">input</span><span class="w"> </span><span class="n">clk</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">rst</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">start</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">dbl</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">ntiles</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="n">XW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">base</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="n">req_valid</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="n">XW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">req_addr</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">resp_valid</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">resp_data</span><span class="p">,</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="n">done</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="n">sum_valid</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">sum_data</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">cycles</span><span class="p">);</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="c1">// scratchpad and DMA</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="n">sram_we</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">sram_waddr</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">sram_wdata</span><span class="p">,</span><span class="w"> </span><span class="n">rdata</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">raddr</span><span class="p">;</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="n">sram</span><span class="w"> </span><span class="p">#(.</span><span class="n">W</span><span class="p">(</span><span class="mh">32</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">AW</span><span class="p">(</span><span class="n">AW</span><span class="p">))</span><span class="w"> </span><span class="n">mem</span><span class="w"> </span><span class="p">(.</span><span class="n">clk</span><span class="p">(</span><span class="n">clk</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">we</span><span class="p">(</span><span class="n">sram_we</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">waddr</span><span class="p">(</span><span class="n">sram_waddr</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">wdata</span><span class="p">(</span><span class="n">sram_wdata</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">raddr</span><span class="p">(</span><span class="n">raddr</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">rdata</span><span class="p">(</span><span class="n">rdata</span><span class="p">));</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="n">d_start</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="n">XW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">d_src</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">d_dst</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="n">d_busy</span><span class="p">,</span><span class="w"> </span><span class="n">d_done</span><span class="p">;</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span><span class="n">dma</span><span class="w"> </span><span class="p">#(.</span><span class="n">AW</span><span class="p">(</span><span class="n">AW</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">XW</span><span class="p">(</span><span class="n">XW</span><span class="p">))</span><span class="w"> </span><span class="n">engine</span><span class="w"> </span><span class="p">(.</span><span class="n">clk</span><span class="p">(</span><span class="n">clk</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">rst</span><span class="p">(</span><span class="n">rst</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">start</span><span class="p">(</span><span class="n">d_start</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">src</span><span class="p">(</span><span class="n">d_src</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">dst</span><span class="p">(</span><span class="n">d_dst</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">len</span><span class="p">(</span><span class="n">TILE</span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]),</span><span class="w"> </span><span class="p">.</span><span class="n">busy</span><span class="p">(</span><span class="n">d_busy</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">done</span><span class="p">(</span><span class="n">d_done</span><span class="p">),</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">        </span><span class="p">.</span><span class="n">req_valid</span><span class="p">(</span><span class="n">req_valid</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">req_addr</span><span class="p">(</span><span class="n">req_addr</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">resp_valid</span><span class="p">(</span><span class="n">resp_valid</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">resp_data</span><span class="p">(</span><span class="n">resp_data</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">sram_we</span><span class="p">(</span><span class="n">sram_we</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">sram_waddr</span><span class="p">(</span><span class="n">sram_waddr</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">sram_wdata</span><span class="p">(</span><span class="n">sram_wdata</span><span class="p">));</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">    </span><span class="c1">// control state</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="n">running</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">ld_n</span><span class="p">,</span><span class="w"> </span><span class="n">cp_n</span><span class="p">,</span><span class="w"> </span><span class="n">sums_out</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">full</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="n">ld_active</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="n">ld_bank</span><span class="p">;</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="c1">// compute state</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="n">c_busy</span><span class="p">,</span><span class="w"> </span><span class="n">c_bank</span><span class="p">,</span><span class="w"> </span><span class="n">drain</span><span class="p">,</span><span class="w"> </span><span class="n">rd_v</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="n">AW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">wi</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">ph</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">acc</span><span class="p">;</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="n">c_issue</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">c_busy</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">drain</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">ph</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">CPW</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w">                     </span><span class="c1">// a word is read in the last cycle of its slot, so every CPW takes TILE*CPW cycles plus a fixed tail</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">raddr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">c_bank</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">TILE</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">0</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">wi</span><span class="p">;</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="n">c_finish</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">c_busy</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">drain</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">rd_v</span><span class="p">;</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">    </span><span class="c1">// decisions made this cycle (functions of the state before the edge)</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">nb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ld_n</span><span class="p">[</span><span class="mh">0</span><span class="p">];</span><span class="w">                                                       </span><span class="c1">// bank the next load would use</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="n">can_load</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">running</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">ld_active</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">d_busy</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">ld_n</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">ntiles</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">full</span><span class="p">[</span><span class="n">nb</span><span class="p">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">dbl</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">(</span><span class="n">full</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">2</span><span class="mb">&#39;b00</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">c_busy</span><span class="p">));</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="n">can_comp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">running</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">c_busy</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">full</span><span class="p">[</span><span class="n">cp_n</span><span class="p">[</span><span class="mh">0</span><span class="p">]]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">cp_n</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">ntiles</span><span class="p">;</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">        </span><span class="n">d_start</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span><span class="w"> </span><span class="n">done</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span><span class="w"> </span><span class="n">sum_valid</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span><span class="w"> </span><span class="n">rd_v</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rst</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">running</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">ld_active</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">c_busy</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">full</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">cycles</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">start</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">running</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">running</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="n">ld_n</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">cp_n</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">sums_out</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">full</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">ld_active</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">c_busy</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">cycles</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a><span class="w">            </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">running</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a><span class="w">                </span><span class="n">cycles</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">cycles</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="w">                </span><span class="c1">// DMA side</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">can_load</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">d_start</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b1</span><span class="p">;</span><span class="w"> </span><span class="n">d_src</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">base</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">ld_n</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">TILE</span><span class="p">;</span><span class="w"> </span><span class="n">d_dst</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="p">(</span><span class="n">nb</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">TILE</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">0</span><span class="p">);</span><span class="w"> </span><span class="n">ld_active</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="n">ld_bank</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">nb</span><span class="p">;</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">d_done</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">full</span><span class="p">[</span><span class="n">ld_bank</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b1</span><span class="p">;</span><span class="w"> </span><span class="n">ld_active</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">ld_n</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">ld_n</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="w">                </span><span class="c1">// compute side</span>
+<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">can_comp</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">c_busy</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="n">c_bank</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">cp_n</span><span class="p">[</span><span class="mh">0</span><span class="p">];</span><span class="w"> </span><span class="n">wi</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">ph</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">drain</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">c_busy</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a><span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">c_issue</span><span class="p">)</span><span class="w"> </span><span class="n">rd_v</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b1</span><span class="p">;</span>
+<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a><span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rd_v</span><span class="p">)</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">acc</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">rdata</span><span class="p">;</span>
+<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a><span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">drain</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a><span class="w">                        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ph</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">CPW</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">ph</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">wi</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">TILE</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="n">drain</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">wi</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">wi</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="k">end</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">ph</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">ph</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a><span class="w">                    </span><span class="k">end</span>
+<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a><span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">c_finish</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a><span class="w">                        </span><span class="n">c_busy</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">full</span><span class="p">[</span><span class="n">c_bank</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span><span class="w"> </span><span class="n">cp_n</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">cp_n</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="n">sum_valid</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b1</span><span class="p">;</span><span class="w"> </span><span class="n">sum_data</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">acc</span><span class="p">;</span><span class="w"> </span><span class="n">sums_out</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">sums_out</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a><span class="w">                        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">sums_out</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ntiles</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">running</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">done</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b1</span><span class="p">;</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a><span class="w">                    </span><span class="k">end</span>
+<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a><span class="w">                </span><span class="k">end</span>
+<a id="__codelineno-2-50" name="__codelineno-2-50" href="#__codelineno-2-50"></a><span class="w">            </span><span class="k">end</span>
+<a id="__codelineno-2-51" name="__codelineno-2-51" href="#__codelineno-2-51"></a><span class="w">        </span><span class="k">end</span>
+<a id="__codelineno-2-52" name="__codelineno-2-52" href="#__codelineno-2-52"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-2-53" name="__codelineno-2-53" href="#__codelineno-2-53"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>The controller streams <code>T</code> tiles of <code>TILE</code> words, adds up each tile (a stand-in for "compute": one word every <code>CPW</code> cycles, so <code>CPW</code> says how slow the arithmetic is relative to the memory) and reports each sum. Two rules do all the work:</p>
+<ul>
+<li><em>A load of tile <code>n</code> into bank <code>n % 2</code> may start when that bank is empty</em> (and, in serial mode, when nothing at all is full or computing).</li>
+<li><em>A bank becomes empty only when the compute on it has finished</em>, so a load can never overwrite data that is still being read.</li>
+</ul>
+<p>With <code>dbl = 0</code> the second clause of the first rule makes it serial: load, compute, load, compute. With <code>dbl = 1</code> the load of tile <code>n+1</code> runs during the compute of tile <code>n</code>.</p>
+<h2 id="the-schedule-model-modeldbuf_goldpy">The schedule model: <code>model/dbuf_gold.py</code><a class="headerlink" href="#the-schedule-model-modeldbuf_goldpy" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="sd">&quot;&quot;&quot;Chapter 5: the answer key for the tile streamer: the sum (mod 2^32) of every tile, and a SCHEDULE MODEL that predicts how many cycles the stream takes, serial and double-buffered.</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="sd">  load time of one tile    L = TILE + LAT + L0          (issue one word per cycle, the last answer arrives LAT cycles later, L0 cycles of handshake)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="sd">  compute time of a tile   C = TILE * CPW + C0</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="sd">  serial:           T * (L + C)                                  + S0</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="sd">  double-buffered:  L + (T - 1) * max(L, C) + C                  + D0      (the load of tile n+1 hides behind the compute of tile n; the slower of the two sets the pace)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="sd">The FORM of these formulas is derived from the schedule; the four small constants L0, C0, S0, D0 are the handshake overheads of this particular controller. They were read off ONE configuration of the simulated circuit and are fixed here; the book then checks them</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="sd">on seven other configurations (different TILE, CPW, LAT, tile count) to the cycle. Usage: dbuf_gold.py OUTFILE TILE CPW LAT NTILES&quot;&quot;&quot;</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="kn">import</span> <span class="nn">random</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="n">L0</span><span class="p">,</span> <span class="n">C0</span><span class="p">,</span> <span class="n">S0</span><span class="p">,</span> <span class="n">D0</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="k">def</span> <span class="nf">cycles</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">tile</span><span class="p">,</span> <span class="n">cpw</span><span class="p">,</span> <span class="n">lat</span><span class="p">):</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="n">L</span> <span class="o">=</span> <span class="n">tile</span> <span class="o">+</span> <span class="n">lat</span> <span class="o">+</span> <span class="n">L0</span><span class="p">;</span> <span class="n">C</span> <span class="o">=</span> <span class="n">tile</span> <span class="o">*</span> <span class="n">cpw</span> <span class="o">+</span> <span class="n">C0</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="k">return</span> <span class="n">T</span> <span class="o">*</span> <span class="p">(</span><span class="n">L</span> <span class="o">+</span> <span class="n">C</span><span class="p">)</span> <span class="o">+</span> <span class="n">S0</span><span class="p">,</span> <span class="n">L</span> <span class="o">+</span> <span class="p">(</span><span class="n">T</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">C</span><span class="p">)</span> <span class="o">+</span> <span class="n">C</span> <span class="o">+</span> <span class="n">D0</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>    <span class="n">out</span><span class="p">,</span> <span class="n">tile</span><span class="p">,</span> <span class="n">cpw</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">4</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>    <span class="n">R</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">tile</span> <span class="o">*</span> <span class="mi">1000</span> <span class="o">+</span> <span class="n">cpw</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">lat</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="n">T</span><span class="p">);</span> <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">R</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">**</span><span class="mi">32</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">T</span> <span class="o">*</span> <span class="n">tile</span><span class="p">)]</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>    <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">tile</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mh">0xFFFFFFFF</span><span class="p">]</span> <span class="o">*</span> <span class="n">tile</span>                       <span class="c1"># tile 0: the sum wraps around 2^32</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>    <span class="n">sums</span> <span class="o">=</span> <span class="p">[</span><span class="nb">sum</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">n</span> <span class="o">*</span> <span class="n">tile</span><span class="p">:(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">tile</span><span class="p">])</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFFFF</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">T</span><span class="p">)]</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    <span class="n">cs</span><span class="p">,</span> <span class="n">cd</span> <span class="o">=</span> <span class="n">cycles</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">tile</span><span class="p">,</span> <span class="n">cpw</span><span class="p">,</span> <span class="n">lat</span><span class="p">)</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    <span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="n">T</span><span class="p">,</span> <span class="n">tile</span><span class="p">,</span> <span class="n">cs</span><span class="p">,</span> <span class="n">cd</span><span class="p">]</span> <span class="o">+</span> <span class="n">data</span> <span class="o">+</span> <span class="n">sums</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    <span class="nb">open</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%08x</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">words</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">);</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">T</span><span class="si">}</span><span class="s2"> tiles of </span><span class="si">{</span><span class="n">tile</span><span class="si">}</span><span class="s2"> words written to </span><span class="si">{</span><span class="n">out</span><span class="si">}</span><span class="s2">; schedule model: serial </span><span class="si">{</span><span class="n">cs</span><span class="si">}</span><span class="s2"> cycles, double-buffered </span><span class="si">{</span><span class="n">cd</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>The answer key has two parts. The sums are exact (mod 2^32; tile 0 is all ones so the sum wraps). The cycle counts come from a <strong>schedule model</strong>, which is derived from the picture of the pipeline:</p>
+<ul>
+<li>loading one tile takes <code>L = TILE + LAT + L0</code> cycles (one request per word, then wait for the last answer);</li>
+<li>computing it takes <code>C = TILE * CPW + C0</code>;</li>
+<li>serial: <code>T * (L + C)</code>;</li>
+<li>double-buffered: <code>L + (T - 1) * max(L, C) + C</code>. The first load cannot be hidden, the last compute cannot be hidden, and in between <strong>the slower of the two sets the pace</strong>.</li>
+</ul>
+<p><em>How much of this is derived and how much measured?</em> The two formulas are derived. The four small constants <code>L0, C0, S0, D0</code> are controller handshake overheads, which a diagram cannot give; they were read from the first shape and then fixed. Every other shape is therefore a prediction, and the testbench fails if a prediction is off by even one cycle.</p>
+<h2 id="the-testbench-and-the-run">The testbench and the run<a class="headerlink" href="#the-testbench-and-the-run" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1">// Chapter 5: a model of external memory (DRAM): requests are accepted every cycle and each answer appears LAT cycles after its request. A testbench part, not a design.</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">module</span><span class="w"> </span><span class="n">extmem</span><span class="w"> </span><span class="p">#(</span><span class="k">parameter</span><span class="w"> </span><span class="n">LAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">4</span><span class="p">,</span><span class="w"> </span><span class="n">XW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">16</span><span class="p">,</span><span class="w"> </span><span class="n">DEPTH</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">4096</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="n">clk</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">req_valid</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="n">XW</span><span class="o">-</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">req_addr</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="n">resp_valid</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">resp_data</span><span class="p">);</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">mem</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="n">DEPTH</span><span class="o">-</span><span class="mh">1</span><span class="p">];</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="n">LAT</span><span class="o">-</span><span class="mh">1</span><span class="p">];</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="n">LAT</span><span class="o">-</span><span class="mh">1</span><span class="p">];</span><span class="w"> </span><span class="k">integer</span><span class="w"> </span><span class="n">k</span><span class="p">;</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">        </span><span class="n">v</span><span class="p">[</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">req_valid</span><span class="p">;</span><span class="w"> </span><span class="n">d</span><span class="p">[</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">mem</span><span class="p">[</span><span class="n">req_addr</span><span class="p">];</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">k</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">LAT</span><span class="p">;</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="n">k</span><span class="o">-</span><span class="mh">1</span><span class="p">];</span><span class="w"> </span><span class="n">d</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">d</span><span class="p">[</span><span class="n">k</span><span class="o">-</span><span class="mh">1</span><span class="p">];</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">resp_valid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="n">LAT</span><span class="o">-</span><span class="mh">1</span><span class="p">];</span><span class="w"> </span><span class="k">assign</span><span class="w"> </span><span class="n">resp_data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">[</span><span class="n">LAT</span><span class="o">-</span><span class="mh">1</span><span class="p">];</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="k">initial</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">k</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">LAT</span><span class="p">;</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">k</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="n">v</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="k">endmodule</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Chapter 5: run the same stream of tiles twice, serially and double-buffered; compare every tile sum with the golden model AND the cycle counts with the schedule model.</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1">// Shape from -DTILE= -DCPW= -DLAT= ; vectors from out/dbuf_vectors.hex: [ntiles, TILE, serial cycles, double-buffered cycles], then the data words, then the golden sum of every tile.</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="no">`timescale</span><span class="w"> </span><span class="mh">1</span><span class="n">ns</span><span class="o">/</span><span class="mh">1</span><span class="n">ps</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="no">`ifndef</span><span class="w"> </span><span class="n">TILE</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w"> </span><span class="no">`define</span><span class="w"> </span><span class="n">TILE</span><span class="w"> </span><span class="mh">16</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="no">`endif</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="no">`ifndef</span><span class="w"> </span><span class="n">CPW</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w"> </span><span class="no">`define</span><span class="w"> </span><span class="n">CPW</span><span class="w"> </span><span class="mh">1</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="no">`endif</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="no">`ifndef</span><span class="w"> </span><span class="n">LAT</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w"> </span><span class="no">`define</span><span class="w"> </span><span class="n">LAT</span><span class="w"> </span><span class="mh">4</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="no">`endif</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="k">module</span><span class="w"> </span><span class="n">dbuf_tb</span><span class="p">;</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">    </span><span class="k">localparam</span><span class="w"> </span><span class="n">TILE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">`TILE</span><span class="p">,</span><span class="w"> </span><span class="n">CPW</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">`CPW</span><span class="p">,</span><span class="w"> </span><span class="n">LAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">`LAT</span><span class="p">,</span><span class="w"> </span><span class="n">BASE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">5</span><span class="p">;</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="n">clk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">,</span><span class="w"> </span><span class="n">rst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">,</span><span class="w"> </span><span class="n">dbl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">7</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">ntiles</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="n">req_valid</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">req_addr</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="n">resp_valid</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">resp_data</span><span class="p">;</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="n">done</span><span class="p">,</span><span class="w"> </span><span class="n">sum_valid</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">sum_data</span><span class="p">,</span><span class="w"> </span><span class="n">cycles</span><span class="p">;</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">    </span><span class="n">extmem</span><span class="w"> </span><span class="p">#(.</span><span class="n">LAT</span><span class="p">(</span><span class="n">LAT</span><span class="p">))</span><span class="w"> </span><span class="n">ext</span><span class="w"> </span><span class="p">(.</span><span class="n">clk</span><span class="p">(</span><span class="n">clk</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">req_valid</span><span class="p">(</span><span class="n">req_valid</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">req_addr</span><span class="p">(</span><span class="n">req_addr</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">resp_valid</span><span class="p">(</span><span class="n">resp_valid</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">resp_data</span><span class="p">(</span><span class="n">resp_data</span><span class="p">));</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">    </span><span class="n">dbuf</span><span class="w"> </span><span class="p">#(.</span><span class="n">TILE</span><span class="p">(</span><span class="n">TILE</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">CPW</span><span class="p">(</span><span class="n">CPW</span><span class="p">))</span><span class="w"> </span><span class="n">dut</span><span class="w"> </span><span class="p">(.</span><span class="n">clk</span><span class="p">(</span><span class="n">clk</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">rst</span><span class="p">(</span><span class="n">rst</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">start</span><span class="p">(</span><span class="n">start</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">dbl</span><span class="p">(</span><span class="n">dbl</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">ntiles</span><span class="p">(</span><span class="n">ntiles</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">base</span><span class="p">(</span><span class="n">BASE</span><span class="p">[</span><span class="mh">15</span><span class="o">:</span><span class="mh">0</span><span class="p">]),</span><span class="w"> </span><span class="p">.</span><span class="n">req_valid</span><span class="p">(</span><span class="n">req_valid</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">req_addr</span><span class="p">(</span><span class="n">req_addr</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">resp_valid</span><span class="p">(</span><span class="n">resp_valid</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">resp_data</span><span class="p">(</span><span class="n">resp_data</span><span class="p">),</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">        </span><span class="p">.</span><span class="n">done</span><span class="p">(</span><span class="n">done</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">sum_valid</span><span class="p">(</span><span class="n">sum_valid</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">sum_data</span><span class="p">(</span><span class="n">sum_data</span><span class="p">),</span><span class="w"> </span><span class="p">.</span><span class="n">cycles</span><span class="p">(</span><span class="n">cycles</span><span class="p">));</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">#</span><span class="mh">5</span><span class="w"> </span><span class="n">clk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">~</span><span class="n">clk</span><span class="p">;</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="w">    </span><span class="k">integer</span><span class="w"> </span><span class="n">nreq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">req_valid</span><span class="p">)</span><span class="w"> </span><span class="n">nreq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nreq</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w">      </span><span class="c1">// every word requested from external memory</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">31</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">vec</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="mh">65535</span><span class="p">];</span><span class="w"> </span><span class="k">integer</span><span class="w"> </span><span class="n">nt</span><span class="p">,</span><span class="w"> </span><span class="n">vt</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">bad</span><span class="p">,</span><span class="w"> </span><span class="n">got_n</span><span class="p">,</span><span class="w"> </span><span class="n">mode</span><span class="p">,</span><span class="w"> </span><span class="n">exp_cyc</span><span class="p">,</span><span class="w"> </span><span class="n">meas</span><span class="w"> </span><span class="p">[</span><span class="mh">0</span><span class="o">:</span><span class="mh">1</span><span class="p">];</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="w">    </span><span class="k">initial</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="w">        </span><span class="nb">$readmemh</span><span class="p">(</span><span class="s">&quot;out/dbuf_vectors.hex&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">vec</span><span class="p">);</span><span class="w"> </span><span class="n">nt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="mh">0</span><span class="p">];</span><span class="w"> </span><span class="n">vt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="mh">1</span><span class="p">];</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">vt</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">TILE</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;FAIL: vectors are for TILE=%0d, testbench is TILE=%0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">vt</span><span class="p">,</span><span class="w"> </span><span class="n">TILE</span><span class="p">);</span><span class="w"> </span><span class="n">$fatal</span><span class="p">(</span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;shape mismatch&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">nt</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">TILE</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="n">ext</span><span class="p">.</span><span class="n">mem</span><span class="p">[</span><span class="n">BASE</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="mh">4</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">i</span><span class="p">];</span>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">mode</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mh">2</span><span class="p">;</span><span class="w"> </span><span class="n">mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mode</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="w">            </span><span class="p">@(</span><span class="k">negedge</span><span class="w"> </span><span class="n">clk</span><span class="p">);</span><span class="w"> </span><span class="n">rst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="p">@(</span><span class="k">negedge</span><span class="w"> </span><span class="n">clk</span><span class="p">);</span><span class="w"> </span><span class="n">rst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">dbl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">mode</span><span class="p">;</span><span class="w"> </span><span class="n">ntiles</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nt</span><span class="p">;</span><span class="w"> </span><span class="n">got_n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">nreq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a><span class="w">            </span><span class="p">@(</span><span class="k">negedge</span><span class="w"> </span><span class="n">clk</span><span class="p">);</span><span class="w"> </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="p">@(</span><span class="k">negedge</span><span class="w"> </span><span class="n">clk</span><span class="p">);</span><span class="w"> </span><span class="n">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">            </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">done</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="w">                </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">);</span><span class="w"> </span><span class="p">#</span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">sum_valid</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">                    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">sum_data</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="mh">4</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">nt</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">TILE</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">got_n</span><span class="p">])</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bad</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">5</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;MISMATCH mode %0d tile %0d: got %0d want %0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">mode</span><span class="p">,</span><span class="w"> </span><span class="n">got_n</span><span class="p">,</span><span class="w"> </span><span class="n">sum_data</span><span class="p">,</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="mh">4</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">nt</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">TILE</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">got_n</span><span class="p">]);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a><span class="w">                    </span><span class="n">got_n</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">got_n</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">                </span><span class="k">end</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a><span class="w">            </span><span class="k">end</span>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">nreq</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">nt</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">TILE</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;MISMATCH mode %0d: %0d words requested from external memory, expected %0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">mode</span><span class="p">,</span><span class="w"> </span><span class="n">nreq</span><span class="p">,</span><span class="w"> </span><span class="n">nt</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">TILE</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a><span class="w">            </span><span class="n">meas</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cycles</span><span class="p">;</span><span class="w"> </span><span class="n">exp_cyc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vec</span><span class="p">[</span><span class="mh">2</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mode</span><span class="p">];</span>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">got_n</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">nt</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;MISMATCH mode %0d: %0d sums reported, expected %0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">mode</span><span class="p">,</span><span class="w"> </span><span class="n">got_n</span><span class="p">,</span><span class="w"> </span><span class="n">nt</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">meas</span><span class="p">[</span><span class="n">mode</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">exp_cyc</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;MISMATCH mode %0d: %0d cycles, schedule model says %0d&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">mode</span><span class="p">,</span><span class="w"> </span><span class="n">meas</span><span class="p">[</span><span class="n">mode</span><span class="p">],</span><span class="w"> </span><span class="n">exp_cyc</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a><span class="w">        </span><span class="k">end</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bad</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">0</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;PASS: TILE=%0d CPW=%0d LAT=%0d, %0d tiles: sums match, cycles serial=%0d double-buffered=%0d match the schedule model (exit status 0)&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">TILE</span><span class="p">,</span><span class="w"> </span><span class="n">CPW</span><span class="p">,</span><span class="w"> </span><span class="n">LAT</span><span class="p">,</span><span class="w"> </span><span class="n">nt</span><span class="p">,</span><span class="w"> </span><span class="n">meas</span><span class="p">[</span><span class="mh">0</span><span class="p">],</span><span class="w"> </span><span class="n">meas</span><span class="p">[</span><span class="mh">1</span><span class="p">]);</span>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a><span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;FAIL: %0d problems&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">bad</span><span class="p">);</span><span class="w"> </span><span class="n">$fatal</span><span class="p">(</span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;dbuf failed&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="w">        </span><span class="nb">$finish</span><span class="p">;</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="w">    </span><span class="k">initial</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="p">#</span><span class="mh">50000000</span><span class="p">;</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;FAIL: timeout&quot;</span><span class="p">);</span><span class="w"> </span><span class="n">$fatal</span><span class="p">(</span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;timeout&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p><code>extmem</code> models DRAM: a request is accepted every cycle and the answer appears <code>LAT</code> cycles later. The testbench runs the same stream twice, serial and double-buffered, and checks four things: every tile sum, the number of sums, the number of cycles against the schedule model, and the number of words requested from external memory (exactly <code>T * TILE</code>).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="sd">&quot;&quot;&quot;Chapter 5: the scratchpad, the DMA and the double-buffered tile streamer through the flow. Usage: ch05_run.py&quot;&quot;&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">subprocess</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)));</span> <span class="kn">import</span> <span class="nn">hw</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">ROOT</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">));</span> <span class="kn">import</span> <span class="nn">dbuf_gold</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">F</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;rtl/sram.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/dma.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/dbuf.v&quot;</span><span class="p">,</span> <span class="s2">&quot;tb/extmem.v&quot;</span><span class="p">,</span> <span class="s2">&quot;tb/dbuf_tb.v&quot;</span><span class="p">]</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="k">def</span> <span class="nf">gen</span><span class="p">(</span><span class="n">tile</span><span class="p">,</span> <span class="n">cpw</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">T</span><span class="p">):</span> <span class="k">return</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="s2">&quot;model/dbuf_gold.py&quot;</span><span class="p">,</span> <span class="s2">&quot;out/dbuf_vectors.hex&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">tile</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">cpw</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">T</span><span class="p">)],</span> <span class="n">cwd</span><span class="o">=</span><span class="n">hw</span><span class="o">.</span><span class="n">ROOT</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="k">def</span> <span class="nf">sim</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">tile</span><span class="p">,</span> <span class="n">cpw</span><span class="p">,</span> <span class="n">lat</span><span class="p">):</span> <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">F</span><span class="p">,</span> <span class="s2">&quot;dbuf_tb&quot;</span><span class="p">,</span> <span class="n">defines</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TILE=</span><span class="si">{</span><span class="n">tile</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;CPW=</span><span class="si">{</span><span class="n">cpw</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;LAT=</span><span class="si">{</span><span class="n">lat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="k">def</span> <span class="nf">line</span><span class="p">(</span><span class="n">out</span><span class="p">):</span> <span class="k">return</span> <span class="p">([</span><span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">out</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="k">if</span> <span class="n">l</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s2">&quot;PASS&quot;</span><span class="p">,</span> <span class="s2">&quot;FAIL&quot;</span><span class="p">,</span> <span class="s2">&quot;MISMATCH&quot;</span><span class="p">))]</span> <span class="ow">or</span> <span class="n">out</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()[</span><span class="o">-</span><span class="mi">2</span><span class="p">:])[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;== 1. eight shapes in both simulators: TILE words, CPW compute cycles per word, LAT memory latency, T tiles&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;(the first shape is the one the four overhead constants of the schedule model were read from; the other seven are predictions)&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="k">for</span> <span class="n">cfg</span> <span class="ow">in</span> <span class="p">[(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span> <span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]:</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>    <span class="nb">print</span><span class="p">(</span><span class="n">gen</span><span class="p">(</span><span class="o">*</span><span class="n">cfg</span><span class="p">))</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">fn</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;Icarus&quot;</span><span class="p">,</span> <span class="n">hw</span><span class="o">.</span><span class="n">sim_icarus</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;Verilator&quot;</span><span class="p">,</span> <span class="n">hw</span><span class="o">.</span><span class="n">sim_verilator</span><span class="p">)):</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>        <span class="n">rc</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="n">sim</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">cfg</span><span class="p">[:</span><span class="mi">3</span><span class="p">]);</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">name</span><span class="si">:</span><span class="s2">10s</span><span class="si">}{</span><span class="n">line</span><span class="p">(</span><span class="n">out</span><span class="p">)</span><span class="si">}</span><span class="s2"> (exit </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 2. what double buffering buys: TILE=16, LAT=4, 16 tiles, sweeping the compute time per word (measured in Icarus)&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;CPW&#39;</span><span class="si">:</span><span class="s2">&gt;4s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;load L&#39;</span><span class="si">:</span><span class="s2">&gt;7s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;compute C&#39;</span><span class="si">:</span><span class="s2">&gt;10s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;serial&#39;</span><span class="si">:</span><span class="s2">&gt;7s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;double&#39;</span><span class="si">:</span><span class="s2">&gt;7s</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;speedup&#39;</span><span class="si">:</span><span class="s2">&gt;8s</span><span class="si">}</span><span class="s2">  who sets the pace&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="k">for</span> <span class="n">cpw</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">):</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>    <span class="n">gen</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="n">cpw</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">);</span> <span class="n">rc</span><span class="p">,</span> <span class="n">out</span> <span class="o">=</span> <span class="n">sim</span><span class="p">(</span><span class="n">hw</span><span class="o">.</span><span class="n">sim_icarus</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="n">cpw</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>    <span class="kn">import</span> <span class="nn">re</span><span class="p">;</span> <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;serial=(\d+) double-buffered=(\d+)&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">);</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)),</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>    <span class="n">L</span> <span class="o">=</span> <span class="mi">16</span> <span class="o">+</span> <span class="mi">4</span> <span class="o">+</span> <span class="n">dbuf_gold</span><span class="o">.</span><span class="n">L0</span><span class="p">;</span> <span class="n">C</span> <span class="o">=</span> <span class="mi">16</span> <span class="o">*</span> <span class="n">cpw</span> <span class="o">+</span> <span class="n">dbuf_gold</span><span class="o">.</span><span class="n">C0</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cpw</span><span class="si">:</span><span class="s2">4d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">L</span><span class="si">:</span><span class="s2">7d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">C</span><span class="si">:</span><span class="s2">10d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">s</span><span class="si">:</span><span class="s2">7d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">d</span><span class="si">:</span><span class="s2">7d</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">s</span><span class="o">/</span><span class="n">d</span><span class="si">:</span><span class="s2">8.2f</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="s1">&#39;the load (memory bound)&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">L</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">C</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;the compute (compute bound)&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">== 3. Yosys: what the pieces cost&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a><span class="n">GATES</span> <span class="o">=</span> <span class="s2">&quot;abc -g AND,NAND,OR,NOR,XOR,XNOR,ANDNOT,ORNOT,MUX; opt_clean; stat&quot;</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a><span class="k">for</span> <span class="n">top</span><span class="p">,</span> <span class="n">files</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">&quot;dma&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;rtl/dma.v&quot;</span><span class="p">]),</span> <span class="p">(</span><span class="s2">&quot;dbuf&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;rtl/sram.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/dma.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/dbuf.v&quot;</span><span class="p">])):</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26" href="#__codelineno-6-26"></a>    <span class="n">g</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">synth_stats</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;synth -flatten -top </span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2">; </span><span class="si">{</span><span class="n">GATES</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">);</span> <span class="n">l</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">synth_stats</span><span class="p">(</span><span class="n">files</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;synth_ice40 -flatten -top </span><span class="si">{</span><span class="n">top</span><span class="si">}</span><span class="s2">; stat&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-27" name="__codelineno-6-27" href="#__codelineno-6-27"></a>    <span class="n">ff</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">l</span><span class="p">[</span><span class="s2">&quot;cells&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;SB_DFF&quot;</span><span class="p">));</span> <span class="n">ram</span> <span class="o">=</span> <span class="n">l</span><span class="p">[</span><span class="s2">&quot;cells&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SB_RAM40_4K&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28" href="#__codelineno-6-28"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">top</span><span class="si">:</span><span class="s2">5s</span><span class="si">}</span><span class="s2"> generic gates </span><span class="si">{</span><span class="n">g</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">6d</span><span class="si">}</span><span class="s2">   iCE40 cells </span><span class="si">{</span><span class="n">l</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">5d</span><span class="si">}</span><span class="s2"> (flip-flops </span><span class="si">{</span><span class="n">ff</span><span class="si">}</span><span class="s2">, block RAMs </span><span class="si">{</span><span class="n">ram</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Output (cloud sandbox -- live-executed; Icarus Verilog 12.0, Verilator 5.020, Yosys 0.33)</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>== 1. eight shapes in both simulators: TILE words, CPW compute cycles per word, LAT memory latency, T tiles
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>(the first shape is the one the four overhead constants of the schedule model were read from; the other seven are predictions)
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>6 tiles of 16 words written to out/dbuf_vectors.hex; schedule model: serial 252 cycles, double-buffered 157
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  Icarus    PASS: TILE=16 CPW=1 LAT=4, 6 tiles: sums match, cycles serial=252 double-buffered=157 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>  Verilator PASS: TILE=16 CPW=1 LAT=4, 6 tiles: sums match, cycles serial=252 double-buffered=157 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>6 tiles of 16 words written to out/dbuf_vectors.hex; schedule model: serial 348 cycles, double-buffered 233
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>  Icarus    PASS: TILE=16 CPW=2 LAT=4, 6 tiles: sums match, cycles serial=348 double-buffered=233 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>  Verilator PASS: TILE=16 CPW=2 LAT=4, 6 tiles: sums match, cycles serial=348 double-buffered=233 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>5 tiles of 8 words written to out/dbuf_vectors.hex; schedule model: serial 280 cycles, double-buffered 196
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>  Icarus    PASS: TILE=8 CPW=4 LAT=10, 5 tiles: sums match, cycles serial=280 double-buffered=196 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>  Verilator PASS: TILE=8 CPW=4 LAT=10, 5 tiles: sums match, cycles serial=280 double-buffered=196 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>3 tiles of 32 words written to out/dbuf_vectors.hex; schedule model: serial 216 cycles, double-buffered 146
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>  Icarus    PASS: TILE=32 CPW=1 LAT=2, 3 tiles: sums match, cycles serial=216 double-buffered=146 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>  Verilator PASS: TILE=32 CPW=1 LAT=2, 3 tiles: sums match, cycles serial=216 double-buffered=146 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>7 tiles of 4 words written to out/dbuf_vectors.hex; schedule model: serial 434 cycles, double-buffered 272
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>  Icarus    PASS: TILE=4 CPW=8 LAT=20, 7 tiles: sums match, cycles serial=434 double-buffered=272 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>  Verilator PASS: TILE=4 CPW=8 LAT=20, 7 tiles: sums match, cycles serial=434 double-buffered=272 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>9 tiles of 8 words written to out/dbuf_vectors.hex; schedule model: serial 207 cycles, double-buffered 119
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>  Icarus    PASS: TILE=8 CPW=1 LAT=1, 9 tiles: sums match, cycles serial=207 double-buffered=119 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>  Verilator PASS: TILE=8 CPW=1 LAT=1, 9 tiles: sums match, cycles serial=207 double-buffered=119 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>4 tiles of 64 words written to out/dbuf_vectors.hex; schedule model: serial 656 cycles, double-buffered 455
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>  Icarus    PASS: TILE=64 CPW=1 LAT=30, 4 tiles: sums match, cycles serial=656 double-buffered=455 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>  Verilator PASS: TILE=64 CPW=1 LAT=30, 4 tiles: sums match, cycles serial=656 double-buffered=455 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>1 tiles of 8 words written to out/dbuf_vectors.hex; schedule model: serial 34 cycles, double-buffered 34
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>  Icarus    PASS: TILE=8 CPW=2 LAT=4, 1 tiles: sums match, cycles serial=34 double-buffered=34 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a>  Verilator PASS: TILE=8 CPW=2 LAT=4, 1 tiles: sums match, cycles serial=34 double-buffered=34 match the schedule model (exit status 0) (exit 0)
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a>
+<a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a>== 2. what double buffering buys: TILE=16, LAT=4, 16 tiles, sweeping the compute time per word (measured in Icarus)
+<a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a> CPW  load L  compute C  serial  double  speedup  who sets the pace
+<a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a>   1      23         19     672     387     1.74  the load (memory bound)
+<a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a>   2      23         35     928     583     1.59  the compute (compute bound)
+<a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a>   4      23         67    1440    1095     1.32  the compute (compute bound)
+<a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a>   8      23        131    2464    2119     1.16  the compute (compute bound)
+<a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>  16      23        259    4512    4167     1.08  the compute (compute bound)
+<a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a>
+<a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a>== 3. Yosys: what the pieces cost
+<a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a>dma   generic gates    227   iCE40 cells   156 (flip-flops 50, block RAMs 0)
+<a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a>dbuf  generic gates  17750   iCE40 cells   762 (flip-flops 273, block RAMs 2)
+</code></pre></div>
+<h3 id="reading-it">Reading it<a class="headerlink" href="#reading-it" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>All eight shapes pass in both simulators, to the cycle.</strong> They include a load-bound stream (memory slower than compute), compute-bound ones, a latency of 1 and of 30, a single tile (where double buffering cannot help: 34 cycles either way, as the model says) and a wrapped sum.</li>
+<li><strong>Double buffering helps most when load and compute are balanced.</strong> The sweep (measured in simulation) goes from 1.74x faster at <code>CPW=1</code>, where the two times are close (L=23, C=19), down to 1.08x at <code>CPW=16</code>, where the compute is eleven times the load and there is little to hide. The best possible gain is 2x: when <code>L = C</code>, the total halves. Beyond that, the stream runs at the speed of the slower side, and no amount of overlap makes the slower side faster.</li>
+<li><strong>The scratchpad costs memory, not logic.</strong> In the generic gate count the 256 x 32-bit memory becomes thousands of flip-flop-equivalent gates (17,750 for the whole block); mapped to an FPGA, the same memory becomes <strong>2 block RAMs</strong> and the logic is only 762 cells. A real chip would use a memory compiler's SRAM macro. The DMA engine on its own is small (227 gates), as is the whole control. <em>(Measured by Yosys; area and timing of a real SRAM are not measured here.)</em></li>
+</ul>
+<h2 id="testing-the-tests">Testing the tests<a class="headerlink" href="#testing-the-tests" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="ch">#!/usr/bin/env python3</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="sd">&quot;&quot;&quot;Chapter 5: test the tests. Break the DMA, the scratchpad controller and the double-buffering rules one line at a time; the testbench runs two shapes (one load-bound, one compute-bound). A mutant counts as caught if either shape catches it.&quot;&quot;&quot;</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">subprocess</span><span class="o">,</span> <span class="nn">sys</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)));</span> <span class="kn">import</span> <span class="nn">hw</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">D</span> <span class="o">=</span> <span class="s2">&quot;rtl/dbuf.v&quot;</span><span class="p">;</span> <span class="n">A</span> <span class="o">=</span> <span class="s2">&quot;rtl/dma.v&quot;</span><span class="p">;</span> <span class="n">S</span> <span class="o">=</span> <span class="s2">&quot;rtl/sram.v&quot;</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">M</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: a load may overwrite a bank that is still full&quot;</span><span class="p">,</span> <span class="s2">&quot;!ld_active &amp;&amp; !d_busy &amp;&amp; ld_n &lt; ntiles &amp;&amp; !full[nb] &amp;&amp;&quot;</span><span class="p">,</span> <span class="s2">&quot;!ld_active &amp;&amp; !d_busy &amp;&amp; ld_n &lt; ntiles &amp;&amp;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: double buffering is never used (always serial)&quot;</span><span class="p">,</span> <span class="s2">&quot;(dbl || (full == 2&#39;b00 &amp;&amp; !c_busy))&quot;</span><span class="p">,</span> <span class="s2">&quot;(full == 2&#39;b00 &amp;&amp; !c_busy)&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: serial mode overlaps like double buffering&quot;</span><span class="p">,</span> <span class="s2">&quot;(dbl || (full == 2&#39;b00 &amp;&amp; !c_busy))&quot;</span><span class="p">,</span> <span class="s2">&quot;1&#39;b1&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: every load goes to bank 0&quot;</span><span class="p">,</span> <span class="s2">&quot;d_dst &lt;= (nb ? TILE : 0);&quot;</span><span class="p">,</span> <span class="s2">&quot;d_dst &lt;= 0;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: compute always reads bank 0&quot;</span><span class="p">,</span> <span class="s2">&quot;assign raddr = (c_bank ? TILE : 0) + wi;&quot;</span><span class="p">,</span> <span class="s2">&quot;assign raddr = wi;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: the base address is ignored&quot;</span><span class="p">,</span> <span class="s2">&quot;d_src &lt;= base + ld_n * TILE;&quot;</span><span class="p">,</span> <span class="s2">&quot;d_src &lt;= ld_n * TILE;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: tile addresses overlap by one word&quot;</span><span class="p">,</span> <span class="s2">&quot;d_src &lt;= base + ld_n * TILE;&quot;</span><span class="p">,</span> <span class="s2">&quot;d_src &lt;= base + ld_n * (TILE - 1);&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: the DMA is told to move one word too few&quot;</span><span class="p">,</span> <span class="s2">&quot;.len(TILE[AW-1:0])&quot;</span><span class="p">,</span> <span class="s2">&quot;.len(TILE[AW-1:0] - 1)&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: the accumulator is not cleared between tiles&quot;</span><span class="p">,</span> <span class="s2">&quot;drain &lt;= 0; acc &lt;= 0; end&quot;</span><span class="p">,</span> <span class="s2">&quot;drain &lt;= 0; end&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: the last word is never added&quot;</span><span class="p">,</span> <span class="s2">&quot;if (rd_v) acc &lt;= acc + rdata;&quot;</span><span class="p">,</span> <span class="s2">&quot;if (rd_v &amp;&amp; !drain) acc &lt;= acc + rdata;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: the sum is reported before the last read arrives&quot;</span><span class="p">,</span> <span class="s2">&quot;wire c_finish = c_busy &amp;&amp; drain &amp;&amp; !rd_v;&quot;</span><span class="p">,</span> <span class="s2">&quot;wire c_finish = c_busy &amp;&amp; drain;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: the last word of the tile is skipped&quot;</span><span class="p">,</span> <span class="s2">&quot;if (wi == TILE - 1) drain &lt;= 1;&quot;</span><span class="p">,</span> <span class="s2">&quot;if (wi == TILE - 2) drain &lt;= 1;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: one tile too many is loaded&quot;</span><span class="p">,</span> <span class="s2">&quot;ld_n &lt; ntiles &amp;&amp;&quot;</span><span class="p">,</span> <span class="s2">&quot;ld_n &lt;= ntiles &amp;&amp;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: a word is read in the first cycle of its slot (timing changes)&quot;</span><span class="p">,</span> <span class="s2">&quot;ph == CPW - 1;&quot;</span><span class="p">,</span> <span class="s2">&quot;ph == 0;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a> <span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="s2">&quot;controller: compute waits on the wrong bank&#39;s flag&quot;</span><span class="p">,</span> <span class="s2">&quot;full[cp_n[0]] &amp;&amp; cp_n &lt; ntiles&quot;</span><span class="p">,</span> <span class="s2">&quot;full[0] &amp;&amp; cp_n &lt; ntiles&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a> <span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="s2">&quot;dma: requests all go to the first word&quot;</span><span class="p">,</span> <span class="s2">&quot;assign req_addr = src_r + issued;&quot;</span><span class="p">,</span> <span class="s2">&quot;assign req_addr = src_r;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a> <span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="s2">&quot;dma: answers are written one word too high&quot;</span><span class="p">,</span> <span class="s2">&quot;assign sram_waddr = dst_r + recvd;&quot;</span><span class="p">,</span> <span class="s2">&quot;assign sram_waddr = dst_r + recvd + 1;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a> <span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="s2">&quot;dma: done is raised one answer too early&quot;</span><span class="p">,</span> <span class="s2">&quot;if (recvd == len_r - 1) begin&quot;</span><span class="p">,</span> <span class="s2">&quot;if (recvd == len_r - 2) begin&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a> <span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="s2">&quot;dma: writes only every other answer&quot;</span><span class="p">,</span> <span class="s2">&quot;assign sram_we = resp_valid;&quot;</span><span class="p">,</span> <span class="s2">&quot;assign sram_we = resp_valid &amp;&amp; !recvd[0];&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-26" name="__codelineno-8-26" href="#__codelineno-8-26"></a> <span class="p">(</span><span class="n">S</span><span class="p">,</span> <span class="s2">&quot;sram: the write is lost&quot;</span><span class="p">,</span> <span class="s2">&quot;if (we) mem[waddr] &lt;= wdata;&quot;</span><span class="p">,</span> <span class="s2">&quot;if (we &amp;&amp; waddr == 0) mem[waddr] &lt;= wdata;&quot;</span><span class="p">),</span>
+<a id="__codelineno-8-27" name="__codelineno-8-27" href="#__codelineno-8-27"></a><span class="p">]</span>
+<a id="__codelineno-8-28" name="__codelineno-8-28" href="#__codelineno-8-28"></a><span class="n">F</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;rtl/sram.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/dma.v&quot;</span><span class="p">,</span> <span class="s2">&quot;rtl/dbuf.v&quot;</span><span class="p">,</span> <span class="s2">&quot;tb/extmem.v&quot;</span><span class="p">];</span> <span class="n">SHAPES</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">)]</span>
+<a id="__codelineno-8-29" name="__codelineno-8-29" href="#__codelineno-8-29"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;NOTE: this script deliberately breaks copies of the RTL. &#39;caught&#39; lines are EXPECTED: they show the testbench can detect the mistake.&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-30" name="__codelineno-8-30" href="#__codelineno-8-30"></a><span class="n">res</span> <span class="o">=</span> <span class="p">{</span><span class="n">m</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">M</span><span class="p">}</span>
+<a id="__codelineno-8-31" name="__codelineno-8-31" href="#__codelineno-8-31"></a><span class="k">for</span> <span class="n">tile</span><span class="p">,</span> <span class="n">cpw</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">T</span> <span class="ow">in</span> <span class="n">SHAPES</span><span class="p">:</span>
+<a id="__codelineno-8-32" name="__codelineno-8-32" href="#__codelineno-8-32"></a>    <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="s2">&quot;model/dbuf_gold.py&quot;</span><span class="p">,</span> <span class="s2">&quot;out/dbuf_vectors.hex&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">tile</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">cpw</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">lat</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">T</span><span class="p">)],</span> <span class="n">cwd</span><span class="o">=</span><span class="n">hw</span><span class="o">.</span><span class="n">ROOT</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-8-33" name="__codelineno-8-33" href="#__codelineno-8-33"></a>    <span class="n">c</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">lines</span> <span class="o">=</span> <span class="n">hw</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="s2">&quot;dbuf_tb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;tb/dbuf_tb.v&quot;</span><span class="p">],</span> <span class="n">defines</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TILE=</span><span class="si">{</span><span class="n">tile</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;CPW=</span><span class="si">{</span><span class="n">cpw</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;LAT=</span><span class="si">{</span><span class="n">lat</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+<a id="__codelineno-8-34" name="__codelineno-8-34" href="#__codelineno-8-34"></a>    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span> <span class="n">label</span><span class="p">,</span> <span class="n">status</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;: &quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span> <span class="n">res</span><span class="p">[</span><span class="n">label</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+<a id="__codelineno-8-35" name="__codelineno-8-35" href="#__codelineno-8-35"></a><span class="n">caught</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-8-36" name="__codelineno-8-36" href="#__codelineno-8-36"></a><span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">st</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-8-37" name="__codelineno-8-37" href="#__codelineno-8-37"></a>    <span class="n">ok</span> <span class="o">=</span> <span class="s2">&quot;caught&quot;</span> <span class="ow">in</span> <span class="n">st</span><span class="p">;</span> <span class="n">caught</span> <span class="o">+=</span> <span class="n">ok</span>
+<a id="__codelineno-8-38" name="__codelineno-8-38" href="#__codelineno-8-38"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="s1">&#39;caught&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">ok</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;NOT CAUGHT&#39;</span><span class="si">}</span><span class="s2">   [</span><span class="si">{</span><span class="n">SHAPES</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">w/cpw</span><span class="si">{</span><span class="n">SHAPES</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">st</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">; </span><span class="si">{</span><span class="n">SHAPES</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">w/cpw</span><span class="si">{</span><span class="n">SHAPES</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">st</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-39" name="__codelineno-8-39" href="#__codelineno-8-39"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">tile streamer: </span><span class="si">{</span><span class="n">caught</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">M</span><span class="p">)</span><span class="si">}</span><span class="s2"> broken circuits caught&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-40" name="__codelineno-8-40" href="#__codelineno-8-40"></a><span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">caught</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">M</span><span class="p">)</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Output (cloud sandbox -- live-executed)</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>NOTE: this script deliberately breaks copies of the RTL. &#39;caught&#39; lines are EXPECTED: they show the testbench can detect the mistake.
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>controller: a load may overwrite a bank that is still full: caught   [16w/cpw1: NOT CAUGHT; 8w/cpw4: caught]
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>controller: double buffering is never used (always serial): caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>controller: serial mode overlaps like double buffering: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>controller: every load goes to bank 0: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>controller: compute always reads bank 0: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>controller: the base address is ignored: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>controller: tile addresses overlap by one word: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>controller: the DMA is told to move one word too few: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>controller: the accumulator is not cleared between tiles: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>controller: the last word is never added: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>controller: the sum is reported before the last read arrives: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>controller: the last word of the tile is skipped: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>controller: one tile too many is loaded: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>controller: a word is read in the first cycle of its slot (timing changes): caught   [16w/cpw1: NOT CAUGHT; 8w/cpw4: caught]
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>controller: compute waits on the wrong bank&#39;s flag: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>dma: requests all go to the first word: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>dma: answers are written one word too high: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>dma: done is raised one answer too early: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>dma: writes only every other answer: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>sram: the write is lost: caught   [16w/cpw1: caught; 8w/cpw4: caught]
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>tile streamer: 20 of 20 broken circuits caught
+</code></pre></div>
+<p>All 20 broken circuits are caught, but the table has a lesson in its right-hand column. Two mutants are caught by <strong>only one of the two test shapes</strong>:</p>
+<ul>
+<li><em>"A load may overwrite a bank that is still full"</em> is not caught by the load-bound shape (16 words, <code>CPW=1</code>): there the load is the slow side, so by the time the controller wants to load into a bank, compute has long emptied it, and the missing guard is never needed. (This is reasoning from the schedule, which is consistent with the result, rather than something separately measured.) It is caught by the compute-bound shape, where the DMA is ready long before the bank is free and the missing guard lets it overwrite data still being read.</li>
+<li><em>"A word is read in the first cycle of its slot"</em> changes nothing when <code>CPW = 1</code>: the first and last cycle of a one-cycle slot are the same cycle. At <code>CPW=4</code> they are not, and the timing check sees it.</li>
+</ul>
+<p>A test suite that used only the first shape would have passed both bugs. <strong>The shape of the test has to cover the regime in which each rule matters.</strong> That is why this chapter's testbench is run for eight shapes and the mutation run uses one load-bound and one compute-bound shape. Nothing survived, and no equivalent mutants were found in this circuit.</p>
+<h2 id="what-this-chapter-does-and-does-not-establish">What this chapter does and does not establish<a class="headerlink" href="#what-this-chapter-does-and-does-not-establish" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Correct</strong>: the sums for all eight shapes, and the controller's rules, as far as the 20 mutants probe them.</li>
+<li><strong>A model, not a memory system.</strong> The external memory has a fixed latency and unlimited bandwidth for one word per cycle; real DRAM has banks, row buffers, refresh, and contention. The conclusions about <em>overlap</em> hold; the cycle counts do not carry over.</li>
+<li><strong>Only one tile in flight per bank.</strong> More general schemes (three buffers, strided or 2-D transfers) are not covered.</li>
+</ul>
+<h2 id="chapter-summary">Chapter summary<a class="headerlink" href="#chapter-summary" title="Permanent link">&para;</a></h2>
+<p>A scratchpad is a software-managed on-chip memory; a DMA engine fills it without the compute units waiting; double buffering overlaps the next load with the current compute. The stream's time is <code>L + (T-1) * max(L, C) + C</code>, so overlapping can at best halve the time and only when load and compute are balanced. The circuit matched this to the cycle on eight shapes, and two controller bugs were visible to only one of the two kinds of test shape.</p>
+<h2 id="self-check-questions">Self-check questions<a class="headerlink" href="#self-check-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>For <code>TILE = 16</code>, <code>LAT = 4</code>, <code>CPW = 2</code> the model gives L = 23 and C = 35. Compute the serial and double-buffered cycles for T = 6 tiles (with S0 = D0 = 0), and check them against the run.</li>
+<li>Why can double buffering never give a speedup of more than 2x?</li>
+<li>Why must a bank be marked empty when the compute <em>finishes</em> and not when it starts?</li>
+<li>Which of the two bugs that only one shape caught would also be missed by a testbench that runs only the serial mode?</li>
+<li>A real DRAM has a latency of about 100 cycles and returns 64 bytes per request. What would you change in the DMA engine so that a tile of 1 KB is loaded efficiently?</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "search.suggest", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1083 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A systolic array in Verilog, int8 quantization, KV cache and batching, bandwidth analysis, a Yosys synthesis flow, and a compiler from a model graph to the chip. Open-source tools only.">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../part10/10-synthesis-and-gate-level/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Answers to the Self-Check Questions - Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#answers-to-the-self-check-questions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-header__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Answers to the Self-Check Questions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" class="md-nav__button md-logo" aria-label="Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    Silicon Compiler from Scratch -- An Open-Source LLM-Inference Accelerator, From Verilog to the Compiler That Targets It -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part01/01-the-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. The Flow: One Circuit Through Four Tools, and a Way to Test the Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part02/02-mac-and-number-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part03/03-quantization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part04/04-systolic-array/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. The Systolic Array: N x N Multiplies Per Cycle, and the Schedule That Makes It Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part05/05-scratchpad-dma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. The Scratchpad, the DMA Engine, and Double Buffering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part06/06-vector-unit-softmax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. The Vector Unit: A Lookup-Table Exponential, a Divider, and Fixed-Point Softmax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part07/07-the-whole-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. GA-2: An Instruction Set, a Sequencer, and the Whole Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part08/08-attention-kv-cache/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Attention and the KV Cache: One Decode Step, From Hidden State to Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part09/09-batching-and-bandwidth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part10/10-synthesis-and-gate-level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. Synthesis, Timing and Gate-Level Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Answers to the Self-Check Questions
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Answers to the Self-Check Questions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-1-the-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 1: The Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 2
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 3
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 4
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 5
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 6
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 7
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 8
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 9
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 10
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-1-the-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 1: The Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 2
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 3
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 4
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 5
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 6
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 7
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 8
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 9
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 10
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="answers-to-the-self-check-questions">Answers to the Self-Check Questions<a class="headerlink" href="#answers-to-the-self-check-questions" title="Permanent link">&para;</a></h1>
+<p>Worked answers, chapter by chapter.</p>
+<hr />
+<h2 id="chapter-1-the-flow">Chapter 1: The Flow<a class="headerlink" href="#chapter-1-the-flow" title="Permanent link">&para;</a></h2>
+<p><strong>1. Why does the testbench compare with <code>!==</code> and not <code>!=</code>, and what would a plain <code>!=</code> let through?</strong></p>
+<p>Worked answer: <code>!=</code> returns <em>unknown</em> (<code>x</code>) when either side contains an <code>x</code> or <code>z</code> bit, and an <code>if</code> on an unknown condition is treated as false, so the mismatch branch is silently skipped. A wire that nothing drives (for instance the output of a stage that was never built) is <code>x</code>, so with <code>!=</code> a broken circuit whose outputs are <code>x</code> would be reported as correct. <code>!==</code> compares the four-state values literally, so <code>x</code> never equals a known bit and the mismatch is counted.</p>
+<p><strong>2. The golden model enumerates all 512 inputs. Roughly how many inputs does a circuit with two 32-bit operands have, and what does that do to the idea of "exhaustive"?</strong></p>
+<p>Worked answer: 2^64 (about 1.8 x 10^19) operand pairs, times 2 for a carry-in. At a billion tests per second that is about 600 years, so exhaustive testing is impossible. Testing then relies on directed corner cases, random inputs, structural arguments (a 32-bit adder is built from the same stage repeated, so testing small widths exhaustively says a lot) and, in this book, mutation counts that show how much a pass is worth.</p>
+<p><strong>3. Yosys reports 20 gates for the adder and 9 lookup tables for the same design. Why is neither number "wrong", and which would you quote for a chip?</strong></p>
+<p>Worked answer: they count different things. A standard-cell chip is built from fixed small gates, so a gate count (and, with a library, an area) is the relevant figure; an FPGA is built from programmable lookup tables, so a LUT count is. The same logic packs differently into each. For a chip you would quote the gates or cell area after mapping to the process's real cell library, which this book does not have, so it quotes the generic-gate count and labels it as such.</p>
+<p><strong>4. A testbench that tried only <code>cin = 0</code> would miss exactly one of the ten mutants. Which one, and why does that make exhaustiveness valuable?</strong></p>
+<p>Worked answer: the mutant that ties the carry-in to zero (<code>assign c[0] = 1'b0;</code>). With <code>cin</code> always 0 the tied-off circuit behaves identically, so a test that never sets <code>cin</code> to 1 cannot tell them apart; the other nine mutants change behaviour even with <code>cin = 0</code>. This is the typical way a weak test fails: not by missing the big mistakes but by never exercising the input that distinguishes one particular mistake. Exhaustive testing leaves no such input unexercised.</p>
+<p><strong>5. A mutant survives. What is the first question to ask, and what are the two possible answers?</strong></p>
+<p>Worked answer: "Is this mutant equivalent to the original?", that is, does it behave identically for every possible input? If it does (like writing <code>a | b</code> for <code>a ^ b</code> in the carry's propagate term), the survivor is harmless and no test could ever catch it; it should be reported and set aside. If it does not, there is an input on which the circuit differs and the test never tried it: a gap in the test, which the fix is to close by adding that input.</p>
+<hr />
+<h2 id="chapter-2">Chapter 2<a class="headerlink" href="#chapter-2" title="Permanent link">&para;</a></h2>
+<p><strong>1. Why is -128 x -128 the worst case for the accumulator, and how many such products does it take to overflow 32 bits signed?</strong></p>
+<p>Worked answer: the product is +16384 = 2^14, larger in magnitude than any other int8 product (127 x 127 = 16129; -128 x 127 = -16256). The signed 32-bit maximum is 2^31 - 1, so 2^31 / 2^14 = 131,072 products overflow it: the 131,072th takes the sum to exactly 2^31, which is one past the maximum. The test uses 4 x 32,768 = 131,072 cycles.</p>
+<p><strong>2. In <code>mul8_sa</code>, why must the row for bit 7 of <code>b</code> be subtracted?</strong></p>
+<p>Worked answer: in two's complement the top bit has weight -128, not +128. The product <code>a * b</code> therefore contains <code>a * (-128)</code> when that bit is set, so its shifted row of <code>a</code> has to be subtracted. Adding it instead gives a result that is wrong by 2 x 128 x a for every negative <code>b</code>, which the mutant "the sign row is added instead of subtracted" and the exhaustive test show.</p>
+<p><strong>3. Why does the MAC compute its sum in 33 bits instead of 32?</strong></p>
+<p>Worked answer: the sum of a 32-bit value and a 16-bit value can need 33 bits. Computing in 32 would already have discarded the carry, so the overflow could not be detected (and the saturating version could not know which limit was crossed). The mutant "the sum is only 32 bits wide" is caught by the overflow runs.</p>
+<p><strong>4. The two multiplier styles cost 401 and 398 gates. What can you conclude, and what can you not?</strong></p>
+<p>Worked answer: that for this flow (Yosys 0.33, default synthesis, generic gate library) hand-built shift-and-add buys nothing over writing <code>*</code>: the tool already finds a comparable structure. Not concluded: anything about speed (no timing was measured), anything about other tools, or that structure never matters (a hard multiplier block in a real process, or a different architecture such as a Booth multiplier, can change the cost).</p>
+<p><strong>5. A testbench ends its loop when the expected value is <code>x</code>. Why does it work in Icarus and hang in Verilator?</strong></p>
+<p>Worked answer: Icarus is four-state, so reading past the end of the vector memory yields <code>x</code> and the loop test sees it. Verilator is two-state: the same read yields 0 (a valid value), so the end marker is never seen and the loop never ends. The fix is to put the row count in word 0 and loop to it.</p>
+<p><strong>6. The mutant "the upper clamp triggers at the limit itself" survives. Is the test weak?</strong></p>
+<p>Worked answer: no. At the limit the clamped value and the unclamped value are the same number, so the two circuits agree on every input: the mutant is equivalent and no test could separate them. It is reported and set aside, as opposed to the three real gaps in the first version, where an input existed that distinguished the mutant and the test had not tried it.</p>
+<hr />
+<h2 id="chapter-3">Chapter 3<a class="headerlink" href="#chapter-3" title="Permanent link">&para;</a></h2>
+<p><strong>1. Why does the scheme avoid -128, and what would break if it were allowed?</strong></p>
+<p>Worked answer: the range -127..127 is symmetric about zero, so negating any value is again in range and <code>requant(-x) = -requant(x)</code> holds. With -128 allowed, <code>-(-128)</code> = 128 does not fit in int8, the magnitude-based hardware would need an extra case, and -128 x -128 = 16384 would be reachable (it is the worst case for the accumulator in Chapter 2). The price is one unused code out of 256.</p>
+<p><strong>2. The requantizer rounds the magnitude, not the signed value. What would change for an accumulator of -3 with M = 1/2?</strong></p>
+<p>Worked answer: -3 x 1/2 = -1.5, an exact tie. Rounding the magnitude (3/2 = 1.5 rounds away to 2) and restoring the sign gives -2. Rounding the signed value with "add a half then shift" (floor of -1.0) would give -1, so negative ties would round toward +infinity and the result would no longer be symmetric. The mutant "rounding done on the signed value" is caught by the tie cases in the key.</p>
+<p><strong>3. Why does the error not grow with K, and why does an outlier column hurt the other columns?</strong></p>
+<p>Worked answer: each product has a small independent rounding error; the sum of K errors grows like sqrt(K), but so does the signal for random data, so the <em>relative</em> error stays near 1-1.5%. An outlier column raises the single per-tensor scale (<code>max|w|/127</code>), so ordinary values near 1 map to just a few integer levels and their rounding error becomes large (19.5% measured). Per-column scales give each column its own range (1.3% measured).</p>
+<p><strong>4. The mutant "shift of 0 adds a half" survives. Why is that not a test gap?</strong></p>
+<p>Worked answer: with <code>s = 0</code> the expression <code>1 &lt;&lt; (s - 1)</code> evaluates <code>1 &lt;&lt; 63</code> in a 56-bit wire, which is zero. The mutant therefore computes the same value as the original for every input; no test can distinguish them. It is an equivalent mutant and shows the special case is redundant (dead logic).</p>
+<p><strong>5. A 7B-parameter model in int8 needs 7 GB of weights. If a chip can read 100 GB/s, what is the upper bound on tokens per second, and what are you assuming?</strong></p>
+<p>Worked answer: 100 GB/s / 7 GB = about 14 tokens per second, assuming every weight is read once per token (batch size 1), nothing is cached on chip, the KV cache and activations are negligible, and the memory system sustains its peak. Batching several sequences reuses each weight read, which is the subject of Chapter 9.</p>
+<hr />
+<h2 id="chapter-4">Chapter 4<a class="headerlink" href="#chapter-4" title="Permanent link">&para;</a></h2>
+<p><strong>1. At which cycle does PE(2,1) multiply <code>A[2][3]</code> by <code>B[3][1]</code>?</strong></p>
+<p>Worked answer: <code>A[i][k]</code> and <code>B[k][j]</code> meet at PE(i,j) on cycle <code>k + i + j</code> = 3 + 2 + 1 = 6. The wavefront for N=3, K=4 shows PE(2,1) working on <code>A[2][3]*B[3][1]</code> in cycle 6.</p>
+<p><strong>2. Derive the number of cycles for a K-long product on an N x N array, and the utilization for N = 4, K = 4.</strong></p>
+<p>Worked answer: the last PE, PE(N-1,N-1), starts at cycle (N-1)+(N-1) = 2N-2 and needs K cycles, so the last multiply is in cycle K+2N-3 and the product takes K+2N-2 cycles. Each of the N<em>N PEs does K useful MACs, so utilization = N</em>N<em>K / ((K+2N-2)</em>N*N) = K/(K+2N-2). For N=4, K=4 that is 4/10 = 0.4 (the model prints 0.400).</p>
+<p><strong>3. Why does <code>clr</code> also clear the pass-through registers? Which mutants show it?</strong></p>
+<p>Worked answer: after a product the last values are still in the registers. If they stay, they are multiplied into the first cycles of the next product. The mutants "clr does not clear the pass-through a register" and "...b register" are caught, but only on the second and later products.</p>
+<p><strong>4. A tester runs one matrix product per simulation, starting from reset. Which of the 16 mutants would it miss?</strong></p>
+<p>Worked answer: the three <code>clr</code> mutants (accumulator not cleared, either pass-through register not cleared). Registers start at zero in a two-state simulator such as Verilator, so there is nothing stale to clear and these mutants behave like the original on a first product. (In Icarus the registers start as <code>x</code>, so removing the clear would show up as <code>x</code> even on a first product, by reasoning rather than by a run; the safe test is the one the book uses, many products back to back.)</p>
+<p><strong>5. A 128 x 128 array multiplies matrices with K = 64. What is the utilization, and what does that suggest about small batches?</strong></p>
+<p>Worked answer: 64 / (64 + 254) = 0.201, about 20%. The array spends most of its time filling and draining. It suggests keeping the array busy by making K long, or by streaming several products back to back (without draining between them), or by batching requests, which is Chapter 9.</p>
+<hr />
+<h2 id="chapter-5">Chapter 5<a class="headerlink" href="#chapter-5" title="Permanent link">&para;</a></h2>
+<p><strong>1. For <code>TILE = 16</code>, <code>LAT = 4</code>, <code>CPW = 2</code> the model gives L = 23 and C = 35. Compute the serial and double-buffered cycles for T = 6 tiles (with S0 = D0 = 0), and check them against the run.</strong></p>
+<p>Worked answer: serial = 6 x (23 + 35) = 348. Double-buffered = 23 + 5 x max(23, 35) + 35 = 23 + 175 + 35 = 233. The run prints exactly <code>serial=348 double-buffered=233</code>.</p>
+<p><strong>2. Why can double buffering never give a speedup of more than 2x?</strong></p>
+<p>Worked answer: the serial time is about T(L + C) and the double-buffered time about T x max(L, C) (for large T). The ratio (L + C) / max(L, C) is at most 2, reached when L = C. If one side is ten times the other the ratio is 1.1: there is little to hide. (Three-way overlap of load, compute and store can reach 3x, but that is a different design.)</p>
+<p><strong>3. Why must a bank be marked empty when the compute <em>finishes</em> and not when it starts?</strong></p>
+<p>Worked answer: while the compute is running it is still reading words from that bank. If the bank were marked empty at the start, the DMA could begin writing the next tile into it and overwrite words not yet read, so sums would be wrong. The mutant "a load may overwrite a bank that is still full" is the hazard in a simpler form; it is caught by the compute-bound shape.</p>
+<p><strong>4. Which of the two bugs that only one shape caught would also be missed by a testbench that runs only the serial mode?</strong></p>
+<p>Worked answer: the overwrite bug. In serial mode a load starts only when nothing is full and nothing is computing, so the <code>!full[nb]</code> guard is redundant there and removing it changes nothing. The bug is visible only in double-buffered mode, and only where the compute is slower than the load. (The "first cycle of the slot" bug shows in serial mode too, as a cycle-count difference, when <code>CPW &gt; 1</code>.)</p>
+<p><strong>5. A real DRAM has a latency of about 100 cycles and returns 64 bytes per request. What would you change in the DMA engine so that a tile of 1 KB is loaded efficiently?</strong></p>
+<p>Worked answer: request in bursts of 64 bytes (16 requests for 1 KB, each returning many words) instead of one request per 4-byte word; make the engine accept wide data (64 bytes = 16 words) and write it to the scratchpad with a wide write port or several narrow ones; keep enough requests in flight to cover the 100-cycle latency (bandwidth x latency, the <em>bandwidth-delay product</em>); and align tiles to 64-byte boundaries. The engine here issues one single-word request per cycle, which is the right idea at the wrong granularity.</p>
+<hr />
+<h2 id="chapter-6">Chapter 6<a class="headerlink" href="#chapter-6" title="Permanent link">&para;</a></h2>
+<p><strong>1. Why is subtracting the maximum necessary, and what would the table need to hold without it?</strong></p>
+<p>Worked answer: without it the exponent <code>x/16</code> can be as large as 127/16 = 7.9, so <code>exp</code> reaches about 2,800, and the sum of N such terms needs even more bits; the table would need to hold both large values and small ones (exp of -128/16 = -8 is 3.4e-4), i.e. a wide range at fixed precision. After subtracting the maximum every exponent is in (0, 1], so a 16-bit fraction (65535 = 1.0) is enough, and the largest element contributes exactly 1.0, which keeps the sum at least 65535 (so the division never meets a tiny divisor).</p>
+<p><strong>2. How many cycles does a 128-element softmax take on this unit, and what part of that is the division?</strong></p>
+<p>Worked answer: 3N + 43 = 3 x 128 + 43 = 427 cycles, by extending the formula, which follows from the structure and was measured only up to N = 64 (the run did not try 128). The division is 40 of the 427 cycles, about 9%; for short rows the division dominates (N=8: 40 of 67).</p>
+<p><strong>3. The sum of the probabilities is not exactly 65536. Why, and by how much at most in the study?</strong></p>
+<p>Worked answer: each probability is rounded to an integer (Q0.16), and each table entry was already rounded to 16 bits, so the individual errors do not cancel exactly. The worst deviation of the sum from 1.0 in the study was 3.1e-05 at N=8 and 2.1e-04 at N=64 (about 14 units of 2^-16).</p>
+<p><strong>4. The divider testbench pulses <code>start</code> in the middle of a division on odd cases. What bug does that catch, and why did the original testbench not?</strong></p>
+<p>Worked answer: the bug where <code>start</code> is not ignored while the unit is busy, so a second start restarts the division with new operands (mutant "a start during a division restarts it"). The original testbench only pulsed <code>start</code> while the unit was idle, which is the flow's normal case, so the restart path was never visited; the author confirmed by running the mutant against the old testbench and seeing it pass.</p>
+<p><strong>5. The table is zero from <code>d = 189</code>. What does that do to a vector with 200 equal low scores and one high score?</strong></p>
+<p>Worked answer: the high score gets <code>e = 65535</code>, and each of the 200 low scores (if more than 11.8 below it) gets 0, so the sum is 65535, <code>r = 2^38 / 65535</code>, and the high score's probability is 65536 (1.0) and every other element's is 0. The true softmax would give the 200 together a mass of up to <code>200 * 7.4e-6 = 1.5e-3</code>; the unit loses it. That is the intended trade for a 16-bit table, and it only matters if many tiny terms add up to something comparable to the large one. The Chapter 6 study shows the same effect in its largest error (N=64, one big score, 63 small ones).</p>
+<hr />
+<h2 id="chapter-7">Chapter 7<a class="headerlink" href="#chapter-7" title="Permanent link">&para;</a></h2>
+<p><strong>1. <code>MM dst=100 A=0 B=64 M=2 K=5 N=3 tb=1 lda=5 ldb=5 ldc=3</code>: where in the scratchpad is <code>B[k][n]</code> and where is <code>C[m][n]</code>?</strong></p>
+<p>Worked answer: with <code>tb = 1</code>, B is stored as N rows of K elements, so <code>B[k][n]</code> is at <code>B + n*ldb + k = 64 + 5n + k</code>. <code>C[m][n]</code> is at <code>dst + m*ldc + n = 100 + 3m + n</code>. (<code>A[m][k]</code> is at <code>0 + 5m + k</code>.)</p>
+<p><strong>2. How many busy cycles does the model give for that instruction? Which part is arithmetic and which is data movement?</strong></p>
+<p>Worked answer: <code>M*K + K*N + (K+M+N-2) + M*N + 7 = 10 + 15 + 8 + 6 + 7 = 46</code> (the calibration table shows 46 measured). Only the streaming term (8 cycles, the <code>K+M+N-2</code> of Chapter 4) is arithmetic in the array; staging the operands (25 cycles), writing the result (6) and control (7) are data movement and overhead: arithmetic is 8 of 46 cycles, about 17%.</p>
+<p><strong>3. Why does the ISA forbid partially overlapping operand regions for <code>SM</code>?</strong></p>
+<p>Worked answer: the unit is pipelined: it writes output <code>j</code> while it is still reading later inputs. With identical regions that is safe (output <code>j</code> goes where input <code>j</code> was, already read) and with disjoint regions it cannot interfere, but with a partial overlap an output can overwrite an input not yet read, so the result depends on the pipeline. The reference simulator reads everything first, so the two disagree. The first random-program generator produced such a case and the test failed because of it, not because of a chip bug.</p>
+<p><strong>4. A mutant changes the load's source-address field from 16 bits to 12. Why did no test catch it, and what would catch it?</strong></p>
+<p>Worked answer: the test's external memory has 2048 words, so every address fits in 12 bits; the upper four bits are always zero in every test. Only a program that addresses external memory above 4095 can tell the two apart, which needs a bigger memory model (and a golden model for it). The mutant is equivalent within the tested range, not in general.</p>
+<p><strong>5. Why is the cycle model's constant for <code>MM</code> (7) bigger than the ones for the vector units (2 to 6)? Name two things in <code>ga2_mm.v</code> that it contains.</strong></p>
+<p>Worked answer: the matrix unit has more phases, and each phase has a pipeline edge and a state change: after loading A there is a cycle to drain the last read and switch state, the same after loading B, there is the PRE cycle that clears the array, the transition from streaming to storing, and the FIN state that raises done. Any two of these (read off the state machine, not separately measured): the idle cycle between LA and LB, the PRE (clear) cycle, the FIN cycle.</p>
+<hr />
+<h2 id="chapter-8">Chapter 8<a class="headerlink" href="#chapter-8" title="Permanent link">&para;</a></h2>
+<p><strong>1. Why does a decode step need no causal mask?</strong></p>
+<p>Worked answer: the cache holds only the tokens generated so far, including the new one. Attention to "later" tokens is impossible because they do not exist yet. A mask is needed when many positions are computed at once (prefill, training), where the rows for later tokens are present in the same matrices and must be hidden.</p>
+<p><strong>2. A model has 24 layers, 16 heads of width 64 and an fp16 cache. How many bytes per token and for a 2,048-token context?</strong></p>
+<p>Worked answer: per token = 2 (K and V) x 24 x 16 x 64 x 2 bytes = 98,304 bytes (96 KiB). For 2,048 tokens: 98,304 x 2,048 = 201,326,592 bytes = 192 MiB per sequence.</p>
+<p><strong>3. In the cached program at L = 32, 12 of the 24 <code>MM</code> instructions do not depend on the context length. Which ones, and what is their total cycle cost?</strong></p>
+<p>Worked answer: the projections of the new token: 4 each for q, k and v (output width 16 in blocks of 4, <code>M = 1, K = 16, N = 4</code>). Each costs <code>16 + 64 + 19 + 4 + 7 = 110</code> busy cycles plus 2 for fetch and issue = 112, so 12 x 112 = 1,344 cycles, about 26% of the 5,251-cycle step. (The other 12 MMs, the score tiles and the output tiles, do depend on L.)</p>
+<p><strong>4. Why does the exact integer reference miss "q requantization scale is 3% too large" while the stage-wise check catches it?</strong></p>
+<p>Worked answer: the reference calls <code>rq_params</code> for its scales, just as the builder does, so a bug in <code>rq_params</code> changes both outputs identically and they remain equal. The stage-wise check never calls <code>rq_params</code>: it recomputes each stage from the real-valued meaning of the scales (q should equal the product of the quantized inputs times scale_x times scale_w divided by scale_q), so a 3% error moves some values by several levels, and it reports them.</p>
+<p><strong>5. Why can no single-step test catch "the new key is never appended to the cache"?</strong></p>
+<p>Worked answer: the append writes the new key to external memory for use by the <em>following</em> step; within the step itself the new key is already in the scratchpad, so the output of this step is the same with or without the append. Only a test that runs a second step reading the cache the first step wrote can see it. That is why <code>sequence()</code> runs whole decode loops with the external memory persisting from step to step.</p>
+<hr />
+<h2 id="chapter-9">Chapter 9<a class="headerlink" href="#chapter-9" title="Permanent link">&para;</a></h2>
+<p><strong>1. What is GA-2's ridge point, and which side of it is a decode step on?</strong></p>
+<p>Worked answer: peak compute is 16 MACs per cycle (a 4 x 4 array) and memory moves 1 word per cycle, so the ridge point is 16 MACs per word. A decode step has about 1 MAC per word (0.98 measured at batch 1), 16 times below the ridge: it is memory-bound.</p>
+<p><strong>2. The words moved per step are <code>768 + 544 B</code>. Where do 768 and 544 come from?</strong></p>
+<p>Worked answer: 768 is the three weight matrices (Wq, Wk, Wv) of 16 x 16 words each, loaded once for the whole batch. 544 is what each sequence adds at L = 16: its new hidden state 16, its cached keys and values 2 x 15 x 16 = 480, the two appended rows stored back 2 x 16 = 32 and its output 16: 16 + 480 + 32 + 16 = 544. For B = 4 that is 768 + 4 x 544 = 2,944, as measured.</p>
+<p><strong>3. Why does the batch's MAC-per-word figure approach 2.35 but not 16?</strong></p>
+<p>Worked answer: per sequence the MACs are 768 for the projections (which reuse the shared weights, so they add no weight traffic) plus 512 for attention, 1,280 in all, against 544 words of that sequence's own traffic, so the limit is 1,280 / 544 = 2.35. Attention uses each cached word once, so it stays at about 1 MAC per word however many sequences are batched; only the projections benefit from sharing.</p>
+<p><strong>4. Using the table, at what batch size does the KV cache equal the weights for int8 weights, and what does that say about adding more batch beyond it?</strong></p>
+<p>Worked answer: 7.0 GB of weights divided by 1.07 GB of cache per request is 6.5. Beyond a batch of about 6.5 the cache traffic exceeds the weight traffic, so the throughput rises more slowly (from 662 tokens/s at 16 to 908 at 256, against a limit of 931): extra batch mostly adds cache traffic that does not amortize.</p>
+<p><strong>5. Why did the first version of the batch test miss "every sequence reads the hidden state of sequence 0", and what fixed it?</strong></p>
+<p>Worked answer: the batched step and the single-sequence step are built by the same builder, so both read sequence 0's state for every sequence and agree with each other. The first version compared with the integer reference only for a batch of one, which means only sequence 0, whose state is the correct one. Comparing every sequence, decoded alone, with the integer reference makes the single run for sequences 1 to 3 wrong, and the mismatch appears.</p>
+<hr />
+<h2 id="chapter-10">Chapter 10<a class="headerlink" href="#chapter-10" title="Permanent link">&para;</a></h2>
+<p><strong>1. Why does the toy library come with two files generated from one table?</strong></p>
+<p>Worked answer: synthesis reads the Liberty file (functions, areas, delays) while simulation reads Verilog models of the same cells. If a function differed between them, the netlist would be wrong with respect to its own simulation models in a way no tool would warn about. Generating both from one table removes the possibility; the mutation run then breaks it on purpose to check that simulation would notice.</p>
+<p><strong>2. The critical path of the chip is <code>sp.rdata -&gt; ... -&gt; sp.wdata</code>. Which unit is on it, and what would you change?</strong></p>
+<p>Worked answer: the requantizer, inside the <code>RQ</code> unit: it sits between the scratchpad's read data and its write data, 79 gates deep (9.87 ns). Pipelining it, i.e. a register in the middle of the 32 x 24 multiplier, so that <code>RQ</code> takes two or three cycles per word, would shorten the clock period to about that of the next-slowest units (5-6 ns in this model); the cost is a larger constant in the cycle model for <code>RQ</code>.</p>
+<p><strong>3. What is X-pessimism, and what evidence shows that the Icarus failure was not a logic error?</strong></p>
+<p>Worked answer: a four-state simulator propagates <code>x</code> through logic that, after optimization, no longer simplifies it away (as in <code>(a &amp; b) | (a &amp; ~b)</code> with <code>b = x</code>); real flip-flops would hold a definite 0 or 1. Evidence it was not a logic error: the same netlist passes in Verilator (two-state), passes in Icarus when the flip-flop model gives a defined power-up value, and passes in Verilator from three random power-up states, with identical memory and cycle counts every time.</p>
+<p><strong>4. Why did the first random power-up run produce <code>deadbeef</code> in the data, and who was at fault?</strong></p>
+<p>Worked answer: in the first clock the chip's random power-up state made it issue a memory request before reset took effect; the testbench's memory answered it eight cycles later (with its out-of-range pattern) just as the real first load began, so the first word of the data was wrong. The testbench was at fault: its memory model did not discard in-flight requests at reset, which a real system's reset would do.</p>
+<p><strong>5. What does it mean that 3 faults were "proven redundant", and why is detecting them not a goal?</strong></p>
+<p>Worked answer: for those faults the equivalence checker proved that the faulty circuit computes the same function as the good one (under the operating constraint), so there is no input at all on which they change an output. They cost nothing functionally and cannot be detected by any test. Fault coverage is therefore quoted over the testable faults (here 297, not 300).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
