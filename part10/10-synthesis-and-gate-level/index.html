@@ -2586,7 +2586,6 @@
 <a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>library says AND2 computes the wrong function: caught   (the mapper used 126 AND2 cells)
 <a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>library says OR2 computes the wrong function: NOT CAUGHT   (the mapper used 0 OR2 cells)
 <a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>library says BUF computes the wrong function: synthesis failed (caught at synthesis)
-<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>mut=0
 </code></pre></div>
 <p>Every wrong function that the mapper actually <em>used</em> is caught: XNOR2, NAND2, NOR2, MUX2, AOI21 and AND2 (the mapper used between 126 and 1,298 of each) fail the simulation, and the INV and BUF mistakes break synthesis itself. Five survive and each is an <strong>equivalent mutant of the flow</strong>: the mapper used <strong>zero</strong> XOR2, OAI21, NAND3, NOR3 and OR2 cells for this design, so a wrong description of them cannot change the netlist. (It would for another design. The check is only as broad as the circuit it runs on.)</p>
 <h2 id="common-mistakes">Common mistakes<a class="headerlink" href="#common-mistakes" title="Permanent link">&para;</a></h2>

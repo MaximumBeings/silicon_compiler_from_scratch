@@ -3276,7 +3276,6 @@
 <a id="__codelineno-20-56" name="__codelineno-20-56" href="#__codelineno-20-56"></a>EQUIVALENT within the tested range: the load source address is 12 bits wide (the test memory has 2048 words): NOT CAUGHT
 <a id="__codelineno-20-57" name="__codelineno-20-57" href="#__codelineno-20-57"></a>EQUIVALENT: VADD reads its two sources in the other order (addition commutes): NOT CAUGHT
 <a id="__codelineno-20-58" name="__codelineno-20-58" href="#__codelineno-20-58"></a>EQUIVALENT: rows of A beyond M are not masked off (PE(i,j) depends only on row i and column j): NOT CAUGHT
-<a id="__codelineno-20-59" name="__codelineno-20-59" href="#__codelineno-20-59"></a>mut=0
 </code></pre></div>
 <p>All 49 broken chips are caught, among them the bugs this kind of design actually has: a field read from the wrong bits, a stride swapped for a size, a unit on the wrong bus, an off-by-one in the streaming time, a missing clear between products, a transposed store, ties resolved the wrong way, a clamp one off.</p>
 <p>Four survivors, each <strong>equivalent</strong> and each of a different kind:</p>
