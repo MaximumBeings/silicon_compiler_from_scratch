@@ -1,0 +1,1782 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Capra, a compiler for an open-source LLM-inference accelerator, built from scratch - a systolic array in Verilog, int8 quantization, KV cache and batching, a Yosys synthesis flow, and the compiler that targets the chip. Open-source tools only.">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="../getting-started/">
+      
+      
+        <link rel="next" href="../part01/01-the-flow/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Background (Verilog and the tools) - Capra: Silicon Compiler from Scratch</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#background-verilog-and-the-tools" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Capra: Silicon Compiler from Scratch" class="md-header__button md-logo" aria-label="Capra: Silicon Compiler from Scratch" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Capra: Silicon Compiler from Scratch
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Background (Verilog and the tools)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Capra: Silicon Compiler from Scratch" class="md-nav__button md-logo" aria-label="Capra: Silicon Compiler from Scratch" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 4h12v1h3v2h-3v2h3v2h-3v2h3v2h-3v2h3v2h-3v1H6v-1H3v-2h3v-2H3v-2h3v-2H3V9h3V7H3V5h3zm5 11v3h1v-3zm2 0v3h1v-3zm2 0v3h1v-3z"/></svg>
+
+    </a>
+    Capra: Silicon Compiler from Scratch
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background (Verilog and the tools)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background (Verilog and the tools)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-design-chips-with-a-language" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why design chips with a language
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#describing-a-circuit-is-not-writing-a-program" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Describing a circuit is not writing a program
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-first-circuit-three-ways" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A first circuit, three ways
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="A first circuit, three ways">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simulating-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulating it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#synthesizing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthesizing it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-verilog-can-do-and-what-it-cannot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Verilog can do, and what it cannot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-tools-one-by-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The tools, one by one
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The tools, one by one">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verilator-as-a-linter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verilator as a linter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-each-tool-appears-in-the-book" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where each tool appears in the book
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-reading-cheat-sheet-for-the-verilog-in-this-book" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A reading cheat sheet for the Verilog in this book
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-go-deeper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where to go deeper
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Foundations: Numbers, Circuits, and the Test Loop
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Foundations: Numbers, Circuits, and the Test Loop
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part01/01-the-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. The Flow: One Circuit Through Four Tools, and a Way to Test the Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part02/02-mac-and-number-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part03/03-quantization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- The Compute Engine: Arrays, Memory and Vectors
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- The Compute Engine: Arrays, Memory and Vectors
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part04/04-systolic-array/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. The Systolic Array: N x N Multiplies Per Cycle, and the Schedule That Makes It Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part05/05-scratchpad-dma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. The Scratchpad, the DMA Engine, and Double Buffering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part06/06-vector-unit-softmax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. The Vector Unit: A Lookup-Table Exponential, a Divider, and Fixed-Point Softmax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- The Whole Chip: Instructions, Attention and Throughput
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- The Whole Chip: Instructions, Attention and Throughput
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part07/07-the-whole-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. GA-2: An Instruction Set, a Sequencer, and the Whole Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part08/08-attention-kv-cache/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Attention and the KV Cache: One Decode Step, From Hidden State to Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part09/09-batching-and-bandwidth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- From Verilog to Gates: Synthesis and Verification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- From Verilog to Gates: Synthesis and Verification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part10/10-synthesis-and-gate-level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. Synthesis, Timing and Gate-Level Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Compilation: Capra and the Capstone
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Compilation: Capra and the Capstone
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part11/11-the-compiler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. Capra, the Compiler: From a Tensor Graph to GA-2 Instructions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part12/12-capstone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Capstone: A Tiny Transformer Decodes on the Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../answers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Answers to the Self-Check Questions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-design-chips-with-a-language" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why design chips with a language
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#describing-a-circuit-is-not-writing-a-program" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Describing a circuit is not writing a program
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-first-circuit-three-ways" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A first circuit, three ways
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="A first circuit, three ways">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simulating-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulating it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#synthesizing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synthesizing it
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-verilog-can-do-and-what-it-cannot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Verilog can do, and what it cannot
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-tools-one-by-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The tools, one by one
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The tools, one by one">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verilator-as-a-linter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verilator as a linter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-each-tool-appears-in-the-book" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where each tool appears in the book
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-reading-cheat-sheet-for-the-verilog-in-this-book" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A reading cheat sheet for the Verilog in this book
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-go-deeper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where to go deeper
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="background-verilog-and-the-tools">Background: Verilog and the Tools<a class="headerlink" href="#background-verilog-and-the-tools" title="Permanent link">&para;</a></h1>
+<p><strong>What you will understand:</strong> why chips are designed with a <em>language</em> rather than drawn, what Verilog is and how it differs from a programming language, what it can and cannot do, and what each of the tools in this book does and why it was chosen. By the end you will be able to read the Verilog in every chapter, run the commands in the book and know which tool a number came from.</p>
+<p><strong>What you need to know first:</strong> the <a href="../getting-started/">Getting Started</a> page (tools installed). No hardware experience is assumed; a little programming in any language helps.</p>
+<p><strong>What this page builds:</strong> one tiny circuit, a three-input majority voter, <code>rtl/demo_vote3.v</code>, with its testbench <code>tb/demo_vote3_tb.v</code>, taken through the simulators and the synthesizer so you can see every tool do its job on something small enough to read in full.</p>
+<h2 id="why-design-chips-with-a-language">Why design chips with a language<a class="headerlink" href="#why-design-chips-with-a-language" title="Permanent link">&para;</a></h2>
+<p>A modern chip has billions of transistors. Nobody places them by hand. The design is written as text, a <strong>hardware description language</strong> (HDL), in the same spirit as source code; tools then check it, simulate it and turn it into the shapes a factory prints on silicon. The reasons for using text are the reasons for using source code in software:</p>
+<ul>
+<li><strong>Scale.</strong> A schematic with a million gates is unreadable; a thousand lines of text that generate it are not.</li>
+<li><strong>Reuse and parameters.</strong> The same module can be instantiated 64 times, or built for 4 or 8 or 128 elements by changing a number (Chapter 4's array does exactly this).</li>
+<li><strong>Testing.</strong> Text can be simulated against a test program thousands of times a minute, long before anything is built. A bug found in simulation costs minutes; one found in a manufactured chip can cost months and millions of dollars.</li>
+<li><strong>Version control and review.</strong> Text can be diffed, reviewed and merged.</li>
+<li><strong>Retargeting.</strong> The same description can become gates for an FPGA (a chip you can reprogram) or for a custom chip in some factory process, by changing the synthesis tool's settings and not the design.</li>
+</ul>
+<p>The two HDLs in wide industrial use are <strong>Verilog</strong> (with its extension <strong>SystemVerilog</strong>) and <strong>VHDL</strong>. Verilog was created in the mid-1980s as a simulation language, was standardized by the IEEE in 1995, and its synthesizable core is now the most widely used way to describe digital circuits in industry. This book uses <strong>plain Verilog</strong> (a small, readable subset), for three reasons: it is compact enough to show whole modules on a page; it is supported by mature open-source tools; and the same constructs carry over unchanged to SystemVerilog and, with different spelling, to VHDL.</p>
+<h2 id="describing-a-circuit-is-not-writing-a-program">Describing a circuit is not writing a program<a class="headerlink" href="#describing-a-circuit-is-not-writing-a-program" title="Permanent link">&para;</a></h2>
+<p>The most important idea on this page: <strong>a hardware description is not executed top to bottom.</strong> It states what exists and how it is connected, and everything that exists is always working.</p>
+<p><img alt="software runs statements in order; a hardware description declares circuits that all exist at once" src="../assets/fig/bg-concurrency.svg" />
+<em>Figure B.1: in software the second line waits for the first. In Verilog the three <code>assign</code> lines are three adders and multipliers wired in a chain; they all exist, and when <code>a</code> changes the change ripples through the chain. Swapping the order of the lines changes nothing.</em></p>
+<p>Four consequences of that idea explain most of what is unusual about Verilog:</p>
+<ol>
+<li><strong>Concurrency is the default.</strong> Statements describe things that happen at the same time. The exception is a <code>begin ... end</code> block inside an <code>always</code> block, which reads like a small program but describes the logic <em>inside one circuit</em>.</li>
+<li><strong>Time is the clock.</strong> A <strong>combinational</strong> circuit (gates only) has no memory: its outputs follow its inputs. A <strong>sequential</strong> circuit has <strong>registers</strong> (flip-flops) that remember a value and change only at a clock edge. Verilog writes combinational logic with <code>assign</code> or <code>always @*</code>, and sequential logic with <code>always @(posedge clk)</code>.</li>
+<li><strong>Values have four states in simulation.</strong> A wire can be <code>0</code>, <code>1</code>, <code>x</code> (unknown: nothing has driven it yet, or two things disagree) or <code>z</code> (disconnected). Real hardware has only 0 and 1 (and analog subtleties); the <code>x</code> exists so the simulator can tell you "this value was never set".</li>
+<li><strong>There are two kinds of assignment.</strong> <code>=</code> (blocking) takes effect at once and is used for combinational logic in a block; <code>&lt;=</code> (non-blocking) schedules the update for the end of the time step and is used for registers, so that every register in the chip samples its inputs <em>at the same moment</em>, before any of them changes.</li>
+</ol>
+<h2 id="a-first-circuit-three-ways">A first circuit, three ways<a class="headerlink" href="#a-first-circuit-three-ways" title="Permanent link">&para;</a></h2>
+<p>The function: <code>y</code> is 1 if at least two of <code>a</code>, <code>b</code>, <code>c</code> are 1 (a <strong>majority voter</strong>, the building block of fault-tolerant systems). Here it is written in three styles that mean the same thing. The file is <code>rtl/demo_vote3.v</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// Background page demo: a three-input majority voter, written three ways, to show what a hardware description looks like. All three describe the same circuit.</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">module</span><span class="w"> </span><span class="n">vote3_assign</span><span class="w"> </span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="n">y</span><span class="p">);</span><span class="w">          </span><span class="c1">// 1. a continuous assignment: &quot;y is always this expression of a, b, c&quot;</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">b</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">c</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="n">b</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">c</span><span class="p">);</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">endmodule</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">module</span><span class="w"> </span><span class="n">vote3_always</span><span class="w"> </span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="n">y</span><span class="p">);</span><span class="w">       </span><span class="c1">// 2. a procedural block: the same function written like a small program</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">@</span><span class="o">*</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="p">({</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">})</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">            </span><span class="mh">3</span><span class="mb">&#39;b011</span><span class="p">,</span><span class="w"> </span><span class="mh">3</span><span class="mb">&#39;b101</span><span class="p">,</span><span class="w"> </span><span class="mh">3</span><span class="mb">&#39;b110</span><span class="p">,</span><span class="w"> </span><span class="mh">3</span><span class="mb">&#39;b111</span><span class="o">:</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b1</span><span class="p">;</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">            </span><span class="k">default</span><span class="o">:</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">        </span><span class="k">endcase</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="k">endmodule</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="k">module</span><span class="w"> </span><span class="n">vote3_gates</span><span class="w"> </span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="n">y</span><span class="p">);</span><span class="w">            </span><span class="c1">// 3. structural: explicit gates and wires</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="kt">wire</span><span class="w"> </span><span class="n">ab</span><span class="p">,</span><span class="w"> </span><span class="n">ac</span><span class="p">,</span><span class="w"> </span><span class="n">bc</span><span class="p">;</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="k">and</span><span class="w"> </span><span class="n">g1</span><span class="w"> </span><span class="p">(</span><span class="n">ab</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">);</span><span class="w"> </span><span class="k">and</span><span class="w"> </span><span class="n">g2</span><span class="w"> </span><span class="p">(</span><span class="n">ac</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">);</span><span class="w"> </span><span class="k">and</span><span class="w"> </span><span class="n">g3</span><span class="w"> </span><span class="p">(</span><span class="n">bc</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">);</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="n">g4</span><span class="w"> </span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">ab</span><span class="p">,</span><span class="w"> </span><span class="n">ac</span><span class="p">,</span><span class="w"> </span><span class="n">bc</span><span class="p">);</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="k">endmodule</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="c1">// a clocked circuit: a register that remembers the last value of y, then the vote of the last three values (a 3-bit window)</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="k">module</span><span class="w"> </span><span class="n">vote_seq</span><span class="w"> </span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="n">clk</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">rst</span><span class="p">,</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="n">d</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="n">y</span><span class="p">);</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="p">[</span><span class="mh">2</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">w</span><span class="p">;</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="k">always</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rst</span><span class="p">)</span><span class="w"> </span><span class="n">w</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mh">3</span><span class="mb">&#39;b000</span><span class="p">;</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">w</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="p">{</span><span class="n">w</span><span class="p">[</span><span class="mh">1</span><span class="o">:</span><span class="mh">0</span><span class="p">],</span><span class="w"> </span><span class="n">d</span><span class="p">};</span><span class="w">   </span><span class="c1">// shift register: &quot;on every rising clock edge ...&quot;</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="n">vote3_assign</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="p">(.</span><span class="n">a</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="mh">0</span><span class="p">]),</span><span class="w"> </span><span class="p">.</span><span class="n">b</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="mh">1</span><span class="p">]),</span><span class="w"> </span><span class="p">.</span><span class="n">c</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="mh">2</span><span class="p">]),</span><span class="w"> </span><span class="p">.</span><span class="n">y</span><span class="p">(</span><span class="n">y</span><span class="p">));</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p><img alt="the same function as an assign statement, an always-case block, and explicit gates, all synthesizing to the same kind of gates" src="../assets/fig/bg-three.svg" />
+<em>Figure B.2: three descriptions of one circuit. The style is about readability; the hardware that results is the same function.</em></p>
+<ul>
+<li><strong><code>assign</code> (dataflow):</strong> "y is always this expression." Shortest; best for small combinational functions.</li>
+<li><strong><code>always @*</code> with <code>case</code> (behaviour):</strong> reads like a small program, but still describes combinational logic (the <code>@*</code> means "whenever any input changes"). Best when there are many cases.</li>
+<li><strong>Gates (structure):</strong> you name every gate and wire. Rarely needed except to describe something very specific.</li>
+<li><strong><code>vote_seq</code></strong> adds a clock. <code>always @(posedge clk)</code> is "on every rising edge of the clock"; <code>w &lt;= {w[1:0], d}</code> shifts the register left and brings <code>d</code> in at the bottom (the braces <code>{ }</code> concatenate bits). The voter looks at the last three values of <code>d</code>.</li>
+</ul>
+<h3 id="simulating-it">Simulating it<a class="headerlink" href="#simulating-it" title="Permanent link">&para;</a></h3>
+<p>A <strong>testbench</strong> is a Verilog module that has no inputs or outputs of its own: it creates the inputs, watches the outputs, checks them and reports. Here is the one for the demo:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// Background page demo testbench: try all eight inputs on the three descriptions, then a clocked example. Self-checking: exit status 1 on a mismatch.</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="no">`timescale</span><span class="w"> </span><span class="mh">1</span><span class="n">ns</span><span class="o">/</span><span class="mh">1</span><span class="n">ps</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">module</span><span class="w"> </span><span class="n">demo_vote3_tb</span><span class="p">;</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="n">y1</span><span class="p">,</span><span class="w"> </span><span class="n">y2</span><span class="p">,</span><span class="w"> </span><span class="n">y3</span><span class="p">;</span><span class="w"> </span><span class="k">integer</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="kt">reg</span><span class="w"> </span><span class="n">expect_y</span><span class="p">;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="n">vote3_assign</span><span class="w"> </span><span class="n">d1</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">y1</span><span class="p">);</span><span class="w"> </span><span class="n">vote3_always</span><span class="w"> </span><span class="n">d2</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">y2</span><span class="p">);</span><span class="w"> </span><span class="n">vote3_gates</span><span class="w"> </span><span class="n">d3</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">y3</span><span class="p">);</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="kt">reg</span><span class="w"> </span><span class="n">clk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">,</span><span class="w"> </span><span class="n">rst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="kt">wire</span><span class="w"> </span><span class="n">ys</span><span class="p">;</span><span class="w"> </span><span class="n">vote_seq</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="p">(</span><span class="n">clk</span><span class="p">,</span><span class="w"> </span><span class="n">rst</span><span class="p">,</span><span class="w"> </span><span class="n">d</span><span class="p">,</span><span class="w"> </span><span class="n">ys</span><span class="p">);</span><span class="w"> </span><span class="k">always</span><span class="w"> </span><span class="p">#</span><span class="mh">5</span><span class="w"> </span><span class="n">clk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">~</span><span class="n">clk</span><span class="p">;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="k">initial</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">        </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;a b c | assign always gates | expected&quot;</span><span class="p">);</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mh">8</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">            </span><span class="p">{</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="p">[</span><span class="mh">2</span><span class="o">:</span><span class="mh">0</span><span class="p">];</span><span class="w"> </span><span class="p">#</span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="n">expect_y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">c</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mh">2</span><span class="p">;</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">            </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;%b %b %b |   %b      %b      %b   |    %b&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">y1</span><span class="p">,</span><span class="w"> </span><span class="n">y2</span><span class="p">,</span><span class="w"> </span><span class="n">y3</span><span class="p">,</span><span class="w"> </span><span class="n">expect_y</span><span class="p">);</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">y1</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="n">expect_y</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">y2</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="n">expect_y</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">y3</span><span class="w"> </span><span class="o">!==</span><span class="w"> </span><span class="n">expect_y</span><span class="p">)</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bad</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">;</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">        </span><span class="k">end</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">        </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">clocked: input d is shifted in on each rising edge; y is the vote of the last three values&quot;</span><span class="p">);</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">        </span><span class="p">@(</span><span class="k">negedge</span><span class="w"> </span><span class="n">clk</span><span class="p">);</span><span class="w"> </span><span class="n">rst</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mh">8</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mh">1</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">            </span><span class="n">d</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">1</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">2</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">3</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">6</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b1</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mh">1</span><span class="mb">&#39;b0</span><span class="p">;</span><span class="w"> </span><span class="p">@(</span><span class="k">posedge</span><span class="w"> </span><span class="n">clk</span><span class="p">);</span><span class="w"> </span><span class="p">#</span><span class="mh">1</span><span class="p">;</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;cycle %0d  d=%b  window=%b  y=%b&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">d</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">w</span><span class="p">,</span><span class="w"> </span><span class="n">ys</span><span class="p">);</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">        </span><span class="k">end</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">bad</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mh">0</span><span class="p">)</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;PASS: all three descriptions agree with the majority function (exit status 0)&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">begin</span><span class="w"> </span><span class="nb">$display</span><span class="p">(</span><span class="s">&quot;FAIL&quot;</span><span class="p">);</span><span class="w"> </span><span class="n">$fatal</span><span class="p">(</span><span class="mh">1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;demo failed&quot;</span><span class="p">);</span><span class="w"> </span><span class="k">end</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">        </span><span class="nb">$finish</span><span class="p">;</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">    </span><span class="k">end</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="k">endmodule</span>
+</code></pre></div>
+<p>Run it in Icarus Verilog (compile with <code>iverilog</code>, run with <code>vvp</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>iverilog<span class="w"> </span>-g2012<span class="w"> </span>-s<span class="w"> </span>demo_vote3_tb<span class="w"> </span>-o<span class="w"> </span>/tmp/dv.vvp<span class="w"> </span>rtl/demo_vote3.v<span class="w"> </span>tb/demo_vote3_tb.v
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>vvp<span class="w"> </span>-n<span class="w"> </span>/tmp/dv.vvp
+</code></pre></div>
+<p><strong>Output (cloud sandbox -- live-executed; Icarus Verilog 12.0)</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>a b c | assign always gates | expected
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>0 0 0 |   0      0      0   |    0
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>0 0 1 |   0      0      0   |    0
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>0 1 0 |   0      0      0   |    0
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>0 1 1 |   1      1      1   |    1
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>1 0 0 |   0      0      0   |    0
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>1 0 1 |   1      1      1   |    1
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>1 1 0 |   1      1      1   |    1
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>1 1 1 |   1      1      1   |    1
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>clocked: input d is shifted in on each rising edge; y is the vote of the last three values
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>cycle 0  d=0  window=000  y=0
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>cycle 1  d=1  window=001  y=0
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>cycle 2  d=1  window=011  y=1
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>cycle 3  d=1  window=111  y=1
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>cycle 4  d=0  window=110  y=1
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>cycle 5  d=0  window=100  y=0
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>cycle 6  d=1  window=001  y=0
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>cycle 7  d=0  window=010  y=0
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>PASS: all three descriptions agree with the majority function (exit status 0)
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>tb/demo_vote3_tb.v:20: $finish called at 86000 (1ps)
+</code></pre></div>
+<p>Reading it: the first table is a <strong>truth table</strong>, all eight combinations of <code>a b c</code>; the three descriptions agree with each other and with a reference written in a different style (<code>(a + b + c) &gt;= 2</code>), which is the book's golden-model idea in miniature. The second part is the clocked circuit: at cycle 1 the window is <code>001</code> (one 1, so <code>y = 0</code>); at cycle 2 it is <code>011</code> (two 1s, so <code>y = 1</code>); the last 1 shifts out and <code>y</code> falls back to 0 at cycle 5. The testbench prints <code>PASS</code> and exits with status 0; on a mismatch it would print <code>FAIL</code> and exit non-zero, so a script can run it without a human reading anything.</p>
+<p>And in the second simulator, Verilator (which compiles the design to C++ and builds an executable):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>verilator<span class="w"> </span>--binary<span class="w"> </span>--timing<span class="w"> </span>-Wno-fatal<span class="w"> </span>-Wno-lint<span class="w"> </span>-Wno-style<span class="w"> </span>--top-module<span class="w"> </span>demo_vote3_tb<span class="w"> </span>-Mdir<span class="w"> </span>/tmp/vl_dv<span class="w"> </span>-o<span class="w"> </span>sim<span class="w"> </span>rtl/demo_vote3.v<span class="w"> </span>tb/demo_vote3_tb.v
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>/tmp/vl_dv/sim
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>PASS: all three descriptions agree with the majority function (exit status 0)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>- tb/demo_vote3_tb.v:20: Verilog $finish
+</code></pre></div>
+<h3 id="synthesizing-it">Synthesizing it<a class="headerlink" href="#synthesizing-it" title="Permanent link">&para;</a></h3>
+<p><strong>Synthesis</strong> turns the description into a <strong>netlist</strong>: a list of gates and wires. Yosys does it; ABC (inside Yosys) chooses the gates. The same function, three ways:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>yosys<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;read_verilog rtl/demo_vote3.v; synth -top vote3_assign; stat&quot;</span><span class="w">                       </span><span class="c1"># generic gates</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>yosys<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;read_verilog rtl/demo_vote3.v; synth -top vote3_assign; abc -g AND,NAND,OR,NOR,XOR,XNOR,ANDNOT,ORNOT,MUX; opt_clean; stat&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>yosys<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;read_verilog rtl/demo_vote3.v; synth_ice40 -top vote3_assign; stat&quot;</span><span class="w">                 </span><span class="c1"># an FPGA family&#39;s lookup tables</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Result (measured with Yosys 0.33)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>generic <code>synth</code></td>
+<td>5 cells: 3 <code>AND</code>, 2 <code>OR</code></td>
+</tr>
+<tr>
+<td>restricted gate set (ABC)</td>
+<td>4 cells: 3 <code>NAND</code>, 1 <code>OR</code></td>
+</tr>
+<tr>
+<td>Lattice iCE40 FPGA</td>
+<td>1 cell: one 4-input lookup table (<code>SB_LUT4</code>)</td>
+</tr>
+<tr>
+<td>the clocked <code>vote_seq</code>, generic</td>
+<td>8 cells: 3 <code>AND</code>, 2 <code>OR</code> and 3 flip-flops (<code>$_SDFF_PP0_</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The same function costs 5 gates, 4 gates or one lookup table depending on what the target offers: <strong>the description says what; the tool decides how.</strong> <code>write_verilog</code> shows the 4-gate netlist as Verilog again:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>/* Generated by Yosys 0.33 (git sha1 2584903a060) */
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>module vote3_assign(a, b, c, y);
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  wire _0_;
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>  wire _1_;
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>  wire _2_;
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>  input a;
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>  wire a;
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>  input b;
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>  wire b;
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>  input c;
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>  wire c;
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>  output y;
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>  wire y;
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>  assign _0_ = ~(a &amp; c);
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>  assign _1_ = a | c;
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>  assign _2_ = ~(b &amp; _1_);
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>  assign y = ~(_0_ &amp; _2_);
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>endmodule
+</code></pre></div>
+<p>The three <code>assign</code> lines of the original became four gates: <code>NAND(a, c)</code>, <code>OR(a, c)</code>, <code>NAND(b, OR(a, c))</code> and a final <code>NAND</code>. Check it by hand with <code>a = 1, b = 0, c = 1</code>: <code>_0_ = ~(1 &amp; 1) = 0</code>, <code>_1_ = 1 | 1 = 1</code>, <code>_2_ = ~(0 &amp; 1) = 1</code>, <code>y = ~(0 &amp; 1) = 1</code>, correct (two of the inputs are 1).</p>
+<p><img alt="the toolchain: Verilog, Python golden model and testbench, two simulators, Yosys and ABC, and the mutation script" src="../assets/fig/bg-toolmap.svg" />
+<em>Figure B.3: how the pieces fit. One Verilog description is checked by two independent simulators against an independent Python answer key, synthesized to gates by Yosys, and the whole test is tested by breaking the circuit on purpose.</em></p>
+<h2 id="what-verilog-can-do-and-what-it-cannot">What Verilog can do, and what it cannot<a class="headerlink" href="#what-verilog-can-do-and-what-it-cannot" title="Permanent link">&para;</a></h2>
+<p><strong>What it does well</strong></p>
+<ul>
+<li>Describe <strong>combinational and sequential logic</strong> at any level: gates, arithmetic, state machines, memories, whole processors.</li>
+<li><strong>Parameterize</strong>: <code>parameter N = 4</code> and <code>generate</code> loops build arrays of any size (Chapter 4).</li>
+<li><strong>Simulate</strong>: the testbench language is the same language, with extra constructs (<code>initial</code>, delays such as <code>#5</code>, <code>$display</code>, <code>$readmemh</code> to load data files) that have no hardware meaning.</li>
+<li><strong>Be synthesized</strong>: a defined subset becomes gates.</li>
+<li><strong>Be formally checked</strong>: the same code can be proved equivalent to another version, or to a property. (This book uses an equivalence checker, ABC's <code>cec</code>, in Chapter 10.)</li>
+</ul>
+<p><strong>What to keep in mind</strong></p>
+<ul>
+<li><strong>Not everything simulates <em>and</em> synthesizes.</strong> A delay such as <code>assign #5 y = a &amp; b;</code> simulates (the output changes 5 time units late) but synthesis <em>ignores</em> it: Yosys builds one AND gate (checked while writing this page). Delays are for modelling in a simulator, not for building hardware. The testbench constructs above (<code>initial</code>, <code>$display</code>) are for simulation only. The book keeps the circuits (<code>rtl/</code>) in the synthesizable subset and everything else in <code>tb/</code>.</li>
+<li><strong>Unknown values.</strong> In Icarus an unset input gives an unknown output:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>a unset -&gt; y = x  (x means unknown)
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>a = 1 -&gt; y = 1
+</code></pre></div>
+<p>A real chip would settle to 0 or 1 at power-up with no warning, which is why Chapter 10 measures what happens with random power-up values (Verilator's two-state simulation can do this) and why every design needs a reset.
+- <strong>It is easy to write something that simulates correctly and synthesizes to something else</strong> (a missing <code>else</code> creates an unintended latch, a mixed blocking/non-blocking style creates a simulation race). The defence is the book's method: two simulators, a synthesis run, and tests that are themselves tested.
+- <strong>It is not a software language.</strong> There is no dynamic memory, no recursion in hardware, and a loop in a synthesizable module is <em>unrolled</em> into copies of a circuit, not executed over time.</p>
+<h2 id="the-tools-one-by-one">The tools, one by one<a class="headerlink" href="#the-tools-one-by-one" title="Permanent link">&para;</a></h2>
+<p>Each tool is here for a reason, and each has limits.</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Role in this book</th>
+<th>Why this one</th>
+<th>What it cannot do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Icarus Verilog</strong> (<code>iverilog</code>, <code>vvp</code>)</td>
+<td>The reference simulator. Compiles to an intermediate form and interprets it.</td>
+<td>Four-state (0, 1, x, z): it <em>shows</em> uninitialized values. Free, small, standard. Accepts the whole testbench language.</td>
+<td>Slow on big designs (it interprets); no real two-state random start-up.</td>
+</tr>
+<tr>
+<td><strong>Verilator</strong></td>
+<td>The second, independent simulator. Compiles the Verilog to C++ and then to a program.</td>
+<td>Very fast; <strong>two-state</strong>, so it behaves like real hardware when a value was never set (and <code>--x-initial unique</code> can randomize it). It is also a strict linter (below).</td>
+<td>No <code>x</code> or <code>z</code>; its model of time is less general than Icarus's, so a testbench written for one sometimes needs care for the other (Chapter 2's lesson).</td>
+</tr>
+<tr>
+<td><strong>Yosys</strong></td>
+<td>Synthesis: Verilog to gates, with counts and a netlist. Also reads and writes JSON netlists, which Chapter 10's timing and fault-grading scripts use.</td>
+<td>Open-source, scriptable, supports several targets (generic gates, FPGAs, custom libraries).</td>
+<td>It does not place or route, or know about a real factory process; area and timing in this book are from a toy library (Chapter 10) and are <em>not</em> silicon numbers.</td>
+</tr>
+<tr>
+<td><strong>ABC</strong> (inside Yosys)</td>
+<td>Chooses the gates that implement a logic function; its <code>cec</code> command also checks two circuits for equivalence.</td>
+<td>Standard open logic optimizer.</td>
+<td>Not a timing sign-off tool.</td>
+</tr>
+<tr>
+<td><strong>Python 3</strong></td>
+<td>The golden models, the assembler and the compiler (Capra), test generators, the mutation scripts, and every figure on every page.</td>
+<td>Readable, with arbitrary-precision integers (so a golden model never overflows by accident). Standard library only: nothing to install.</td>
+<td>Not fast; the book's scripts that run hundreds of thousands of cycles do so in the simulators, not in Python.</td>
+</tr>
+<tr>
+<td><strong>MkDocs + Material</strong></td>
+<td>Builds this book from Markdown, embedding the real source files and recorded outputs.</td>
+<td>The pages show exactly what is in the repository.</td>
+<td>Only needed if you want to build the site yourself.</td>
+</tr>
+<tr>
+<td><strong>git</strong></td>
+<td>Distributes the book's code; every chapter is reproducible from a commit.</td>
+<td>Standard.</td>
+<td></td>
+</tr>
+<tr>
+<td><em>Optional: a waveform viewer such as GTKWave</em></td>
+<td>Not used by the book (it prints waveforms as text and checks with self-testing benches) but handy when you experiment.</td>
+<td>Free; reads the <code>.vcd</code> files simulators write.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="verilator-as-a-linter">Verilator as a linter<a class="headerlink" href="#verilator-as-a-linter" title="Permanent link">&para;</a></h3>
+<p>Verilator can also <em>check a design without simulating it</em>. A small deliberately sloppy file, assigning a 4-bit value to a 3-bit output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">module</span><span class="w"> </span><span class="n">lint_demo</span><span class="p">(</span><span class="k">input</span><span class="w"> </span><span class="p">[</span><span class="mh">3</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="k">output</span><span class="w"> </span><span class="p">[</span><span class="mh">2</span><span class="o">:</span><span class="mh">0</span><span class="p">]</span><span class="w"> </span><span class="n">y</span><span class="p">);</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="k">assign</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">a</span><span class="p">;</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="k">endmodule</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>verilator<span class="w"> </span>--lint-only<span class="w"> </span>-Wall<span class="w"> </span>lint_demo.v
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>%Warning-WIDTHTRUNC: /tmp/lint_demo.v:2:14: Operator ASSIGNW expects 3 bits on the Assign RHS, but Assign RHS&#39;s VARREF &#39;a&#39; generates 4 bits.
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>                                          : ... note: In instance &#39;lint_demo&#39;
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    2 |     assign y = a;
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>      |              ^
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.020
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>                     ... Use &quot;/* verilator lint_off WIDTHTRUNC */&quot; and lint_on around source to disable this message.
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>%Warning-UNUSEDSIGNAL: /tmp/lint_demo.v:1:30: Bits of signal are not used: &#39;a&#39;[3]
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>                                            : ... note: In instance &#39;lint_demo&#39;
+</code></pre></div>
+<p>Both warnings are correct and neither is an error in Verilog itself: the top bit of <code>a</code> is silently dropped. A simulator would run this without complaint and produce a plausible, wrong answer. In the book the lint warnings are switched off for the simulations (<code>-Wno-lint -Wno-style</code>) because the testbenches use constructs that trigger harmless warnings, but you will find the habit useful in your own designs.</p>
+<h2 id="where-each-tool-appears-in-the-book">Where each tool appears in the book<a class="headerlink" href="#where-each-tool-appears-in-the-book" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Chapter</th>
+<th>New idea</th>
+<th>Main tools</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 The flow</td>
+<td>The four-step loop</td>
+<td>all of them, on a 4-bit adder</td>
+</tr>
+<tr>
+<td>2 to 6</td>
+<td>MAC, quantization, array, memory, softmax</td>
+<td>Verilog, both simulators, Yosys, Python models, mutation scripts</td>
+</tr>
+<tr>
+<td>7 to 9</td>
+<td>The whole chip, attention, batching</td>
+<td>the same, plus the assembler and the cycle model</td>
+</tr>
+<tr>
+<td>10</td>
+<td>From Verilog to gates</td>
+<td>Yosys JSON netlists, a toy cell library, ABC equivalence checking, static timing and fault grading in Python</td>
+</tr>
+<tr>
+<td>11 to 12</td>
+<td>The compiler and a tiny language model</td>
+<td>Python (Capra) producing programs that run on the simulated chip</td>
+</tr>
+</tbody>
+</table>
+<h2 id="a-reading-cheat-sheet-for-the-verilog-in-this-book">A reading cheat sheet for the Verilog in this book<a class="headerlink" href="#a-reading-cheat-sheet-for-the-verilog-in-this-book" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>You see</th>
+<th>It means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>module name #(parameter N = 4) (input clk, ...);</code></td>
+<td>A circuit with a configurable size and a list of ports</td>
+</tr>
+<tr>
+<td><code>wire [7:0] x;</code> / <code>reg [7:0] x;</code></td>
+<td>An 8-bit signal (<code>wire</code>: driven by an <code>assign</code>; <code>reg</code>: assigned in an <code>always</code> block; neither implies a register by itself)</td>
+</tr>
+<tr>
+<td><code>signed</code></td>
+<td>The bits are two's complement (Chapter 2); without it arithmetic is unsigned</td>
+</tr>
+<tr>
+<td><code>x[3]</code>, <code>x[7:4]</code>, <code>x[8*i +: 8]</code></td>
+<td>One bit, a range of bits, and "8 bits starting at 8i" (used to slice buses)</td>
+</tr>
+<tr>
+<td><code>{a, b}</code>, <code>{4{a}}</code>, <code>{{8{x[7]}}, x}</code></td>
+<td>Concatenation, repetition, and sign extension</td>
+</tr>
+<tr>
+<td><code>a ? b : c</code></td>
+<td>A multiplexer: <code>b</code> if <code>a</code> is 1, else <code>c</code></td>
+</tr>
+<tr>
+<td><code>always @(posedge clk)</code></td>
+<td>Sequential logic: do this on every rising clock edge</td>
+</tr>
+<tr>
+<td><code>always @*</code></td>
+<td>Combinational logic: redo this whenever any input changes</td>
+</tr>
+<tr>
+<td><code>&lt;=</code> vs <code>=</code></td>
+<td>Non-blocking (registers) versus blocking (combinational) assignment</td>
+</tr>
+<tr>
+<td><code>genvar</code>, <code>generate for</code></td>
+<td>Make N copies of a circuit</td>
+</tr>
+<tr>
+<td><code>$display</code>, <code>$finish</code>, <code>initial</code>, <code>#5</code></td>
+<td>Simulation-only: they do nothing in synthesized hardware</td>
+</tr>
+<tr>
+<td><code>$readmemh("file", mem)</code></td>
+<td>Load a hex file into a memory in the simulator (how golden vectors reach testbenches)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="where-to-go-deeper">Where to go deeper<a class="headerlink" href="#where-to-go-deeper" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Appendix B</strong> (Verilog primer) and <strong>Appendix G</strong> (the EDA flow) expand this page, including the whole synthesizable subset and the usual pitfalls.</li>
+<li><strong>Appendix A</strong> (digital logic) covers gates, flip-flops and finite-state machines from the start.</li>
+<li>The language standards are IEEE 1364 (Verilog) and IEEE 1800 (SystemVerilog); the Icarus, Verilator and Yosys manuals document each tool's dialect and options.</li>
+<li>Chapter 1 puts all of this together on a 4-bit adder, and is the place to continue.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
