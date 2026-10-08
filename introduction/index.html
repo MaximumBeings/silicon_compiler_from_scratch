@@ -1,0 +1,1645 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Capra, a compiler for an open-source LLM-inference accelerator, built from scratch - a systolic array in Verilog, int8 quantization, KV cache and batching, a Yosys synthesis flow, and the compiler that targets the chip. Open-source tools only.">
+      
+      
+        <meta name="author" content="Oluwaseyi Awoga">
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../getting-started/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/capra-favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Introduction (the book at a glance) - Capra: Silicon Compiler from Scratch -- Under Development</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#introduction-the-book-at-a-glance" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Capra: Silicon Compiler from Scratch -- Under Development" class="md-header__button md-logo" aria-label="Capra: Silicon Compiler from Scratch -- Under Development" data-md-component="logo">
+      
+  <img src="../assets/capra-logo.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Capra: Silicon Compiler from Scratch -- Under Development
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Introduction (the book at a glance)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Capra: Silicon Compiler from Scratch -- Under Development" class="md-nav__button md-logo" aria-label="Capra: Silicon Compiler from Scratch -- Under Development" data-md-component="logo">
+      
+  <img src="../assets/capra-logo.svg" alt="logo">
+
+    </a>
+    Capra: Silicon Compiler from Scratch -- Under Development
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction (the book at a glance)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction (the book at a glance)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-book-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this book is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-book-exists-the-motivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this book exists: the motivation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-you-will-be-able-to-do" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What you will be able to do
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-it-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who it is for
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-what-is-in-and-what-is-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope: what is in, and what is out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-stack-from-the-top" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The stack, from the top
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-thread-through-the-book-a-tokens-journey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One thread through the book: a token's journey
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The roadmap
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-method-five-rules-and-the-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The method: five rules, and the evidence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-read-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to read it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#companion-books-and-where-this-one-stops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Companion books, and where this one stops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-do-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to do next
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../background/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background (Verilog and the tools)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1 -- Foundations: Numbers, Circuits, and the Test Loop
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 1 -- Foundations: Numbers, Circuits, and the Test Loop
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part01/01-the-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. The Flow: One Circuit Through Four Tools, and a Way to Test the Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part02/02-mac-and-number-formats/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. The MAC and Number Formats: Two's Complement, Overflow, and the Tests That Found Three Holes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part03/03-quantization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Quantization: int8 Numbers, the Requantizer, and What Accuracy It Costs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2 -- The Compute Engine: Arrays, Memory and Vectors
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 2 -- The Compute Engine: Arrays, Memory and Vectors
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part04/04-systolic-array/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. The Systolic Array: N x N Multiplies Per Cycle, and the Schedule That Makes It Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part05/05-scratchpad-dma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. The Scratchpad, the DMA Engine, and Double Buffering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part06/06-vector-unit-softmax/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. The Vector Unit: A Lookup-Table Exponential, a Divider, and Fixed-Point Softmax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3 -- The Whole Chip: Instructions, Attention and Throughput
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 3 -- The Whole Chip: Instructions, Attention and Throughput
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part07/07-the-whole-chip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. GA-2: An Instruction Set, a Sequencer, and the Whole Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part08/08-attention-kv-cache/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. Attention and the KV Cache: One Decode Step, From Hidden State to Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part09/09-batching-and-bandwidth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. Batching and Bandwidth: Why Decoding Is Slow, and What Helps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4 -- From Verilog to Gates: Synthesis and Verification
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 4 -- From Verilog to Gates: Synthesis and Verification
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part10/10-synthesis-and-gate-level/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. Synthesis, Timing and Gate-Level Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5 -- Compilation: Capra and the Capstone
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Part 5 -- Compilation: Capra and the Capstone
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part11/11-the-compiler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. Capra, the Compiler: From a Tensor Graph to GA-2 Instructions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part12/12-capstone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. Capstone: A Tiny Transformer Decodes on the Chip
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../answers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Answers to the Self-Check Questions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-book-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this book is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-book-exists-the-motivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this book exists: the motivation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-you-will-be-able-to-do" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What you will be able to do
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-it-is-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who it is for
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-what-is-in-and-what-is-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope: what is in, and what is out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-stack-from-the-top" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The stack, from the top
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#one-thread-through-the-book-a-tokens-journey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One thread through the book: a token's journey
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The roadmap
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-method-five-rules-and-the-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The method: five rules, and the evidence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-read-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to read it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#companion-books-and-where-this-one-stops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Companion books, and where this one stops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-do-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to do next
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="introduction-the-book-at-a-glance">Introduction: The Book at a Glance<a class="headerlink" href="#introduction-the-book-at-a-glance" title="Permanent link">&para;</a></h1>
+<p><img alt="introduction" src="../assets/art/introduction.svg" /></p>
+<details class="info">
+<summary>About the animals in this picture and where they are standing</summary>
+<ul>
+<li><strong>Alpine ibex</strong> (<em>Capra ibex</em>) lives in the European Alps, usually above the tree line on steep rock, and is a famously sure-footed climber. Males carry horns that can reach about a metre. Hunting left only a small remnant, around the Gran Paradiso in Italy, by the early 1800s; reintroductions have since restored it across the Alps.</li>
+<li><strong>Markhor</strong> (<em>Capra falconeri</em>) lives in the mountains of Pakistan, Afghanistan and neighbouring regions. The males' horns twist in a corkscrew; the name is often explained as Persian for 'snake-eater'. It is Pakistan's national animal, and community-based conservation has helped some populations recover.</li>
+<li><strong>Siberian ibex</strong> (<em>Capra sibirica</em>) lives in the high mountains of Central Asia, from the Altai and Tian Shan to the Himalaya. It is one of the largest ibexes, and the males' ridged horns can exceed a metre in length.</li>
+<li><strong>West Caucasian tur</strong> (<em>Capra caucasica</em>) lives only in the western Caucasus, on steep slopes above the forest line. Its horns are short and heavy, curving outward and back, and it moves up and down cliffs with ease.</li>
+</ul>
+<p>The scene is imaginary: it is set on Europa, the icy moon of Jupiter, which hides a salty ocean beneath its ice; Jupiter fills the sky. The animals are stylised drawings, shown where they could not live, for effect.</p>
+</details>
+<p><strong>What this page is:</strong> a bird's-eye view of the whole book before you start: what it builds, why, what it deliberately leaves out, how the chapters fit together, how to read it, and what you will be able to do at the end. Everything here is explained properly later; this page is the map.</p>
+<h2 id="what-this-book-is">What this book is<a class="headerlink" href="#what-this-book-is" title="Permanent link">&para;</a></h2>
+<p><em>Capra: Silicon Compiler from Scratch</em> builds a small <strong>accelerator for running large language models</strong>, as a chip team would build one: describe it in Verilog, test it against independent Python models in two simulators, synthesize it to gates, and then build the <strong>compiler</strong> that turns a neural network into programs for it. By the end, a tiny transformer decodes text, token by token, on the simulated silicon, with every program written not by a person but by the compiler.</p>
+<p>Everything runs on a laptop with open-source tools (Icarus Verilog, Verilator, Yosys and Python). Nothing is bought, nothing is licensed, and every number printed on every page was produced by a script you can run.</p>
+<p>One sentence to hold on to, because the book repeats it: <strong>this is a model of a chip, not a chip.</strong> Nothing here has been placed, routed, timed against a real manufacturing process, taped out or measured on silicon. The book is about <em>how such a design is built and checked</em>, with every claim labelled as measured, derived or assumed.</p>
+<h2 id="why-this-book-exists-the-motivation">Why this book exists: the motivation<a class="headerlink" href="#why-this-book-exists-the-motivation" title="Permanent link">&para;</a></h2>
+<p><strong>Running a language model is a hardware problem.</strong> A model such as the ones behind chat assistants produces text one token (roughly a word piece) at a time, and each token needs a pass over every weight of the model. A model with seven billion weights is 7 GB of numbers in 8-bit form; generating one token means reading all of it from memory. The arithmetic per byte read is tiny. So the machine spends most of its time <em>waiting for memory</em>, not computing (Chapter 9 measures this and draws the roofline). Everything interesting in AI inference hardware is a response to that fact: smaller numbers (8 and 4 bits), keeping reusable data on the chip, sharing weights across many requests, and arrangements of multiplier arrays that pass data from neighbour to neighbour instead of fetching it again.</p>
+<p><strong>Understanding that requires seeing it, not just reading about it.</strong> The usual accounts are either slide-level ("accelerators have systolic arrays") or industrial-scale (a proprietary design with millions of lines nobody outside can read). This book sits in between: a design small enough to read completely, real enough that its numbers behave like the real thing (a decode step really is memory-bound; the KV cache really does dominate memory at long contexts; a matrix unit really does idle three quarters of itself on a vector product).</p>
+<p><strong>Hardware and compiler are one problem.</strong> A chip with no compiler is a curiosity, and a compiler without a chip has nothing to be correct about. The tiling, the scales, the memory placement and the instruction set are decided together. So the book builds both, and lets the compiler's needs shape the hardware's limits (the 64-word limit on a matrix product's inner dimension, the missing accumulate instruction, the size of the scratchpad are all visible in the compiler's error messages).</p>
+<p><strong>And hardware has to be <em>verified</em>.</strong> A chip that fails after manufacture cannot be patched. The people who build chips therefore spend more effort checking a design than writing it, and the craft is in making the checks trustworthy. A test that has never failed has never been shown able to fail. So this book gives equal weight to the designs and to <strong>testing the tests</strong>: every circuit is deliberately broken, one line at a time, to see whether its tests notice.</p>
+<h2 id="what-you-will-be-able-to-do">What you will be able to do<a class="headerlink" href="#what-you-will-be-able-to-do" title="Permanent link">&para;</a></h2>
+<p>By the end you will be able to:</p>
+<ol>
+<li><strong>Read and write synthesizable Verilog</strong> for arithmetic, memories, state machines and a small processor, and run it in two simulators.</li>
+<li><strong>Build an independent golden model</strong> of a circuit in Python and use it to test the circuit exhaustively or on directed and random vectors.</li>
+<li><strong>Explain int8 quantization end to end:</strong> how a real number becomes an integer, how an int32 accumulator is brought back to int8, and what accuracy that costs.</li>
+<li><strong>Explain how a systolic array, a scratchpad with DMA and double buffering, and a softmax unit work,</strong> and derive their cycle counts.</li>
+<li><strong>Design a small instruction set,</strong> its sequencer and its reference simulator, and prove the chip matches the simulator to the cycle.</li>
+<li><strong>Explain the KV cache, attention and batching,</strong> and say, with numbers, why decoding is limited by memory and what each remedy buys.</li>
+<li><strong>Take a design through synthesis:</strong> read a netlist, find the critical path, and check the result by gate-level simulation, fault grading and equivalence checking.</li>
+<li><strong>Build and test a small compiler</strong> for tensor graphs: calibration, scale planning, tiling, allocation and emission.</li>
+<li><strong>Judge claims about hardware critically:</strong> tell a measurement from a derivation from an assumption, and recognise when a test cannot see a bug.</li>
+</ol>
+<h2 id="who-it-is-for">Who it is for<a class="headerlink" href="#who-it-is-for" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Software engineers and ML practitioners</strong> who want to know what is under an inference accelerator and why it is built the way it is. You need to read a little Python or C; Appendix B introduces Verilog.</li>
+<li><strong>Hardware and FPGA engineers</strong> who want a worked, honest example of the build-and-verify discipline on an AI workload.</li>
+<li><strong>Students</strong> of computer architecture or compilers who want a complete, small system to study and extend.</li>
+</ul>
+<p><strong>What you do not need:</strong> any chip design experience, any machine-learning theory beyond "a model is a stack of matrix products", an FPGA board, or a license for anything. The appendices give the background (digital logic, Verilog, number formats, linear algebra for ML, transformers and LLM inference, memory systems, the EDA flow), and the Background page introduces the tools.</p>
+<h2 id="scope-what-is-in-and-what-is-out">Scope: what is in, and what is out<a class="headerlink" href="#scope-what-is-in-and-what-is-out" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>In scope</th>
+<th>Out of scope (and where the book says so)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>int8 inference with 32-bit accumulation; int4 weights as a case study</td>
+<td>training; floating-point formats; mixed precision</td>
+</tr>
+<tr>
+<td>a 4 x 4 output-stationary systolic array, a 4,096-word scratchpad, DMA, double buffering</td>
+<td>real DRAM (banks, refresh, contention); caches; multiple chips</td>
+</tr>
+<tr>
+<td>softmax by table and divider; requantization by mantissa and shift</td>
+<td>layer normalization, GELU, rotary embeddings (no hardware or compiler support yet)</td>
+</tr>
+<tr>
+<td>a nine-instruction ISA, a sequencer, a reference simulator, a cycle model</td>
+<td>pipelining across instructions; interrupts; an operating system</td>
+</tr>
+<tr>
+<td>synthesis to a <em>toy</em> cell library, a static timing analyzer, gate-level simulation, fault grading</td>
+<td>place and route, clock trees, power, a real process, manufacturing test</td>
+</tr>
+<tr>
+<td>a graph compiler (Capra) with calibration, tiling and allocation</td>
+<td>scheduling that overlaps loads and compute; spilling; dynamic shapes</td>
+</tr>
+<tr>
+<td>a tiny constructed transformer decoding 24 tokens</td>
+<td>trained models; models larger than a few thousand words per tensor</td>
+</tr>
+</tbody>
+</table>
+<p>The right-hand column is not a list of failures; each chapter's "what this chapter does and does not establish" section says exactly which of these limits applies to its numbers.</p>
+<h2 id="the-stack-from-the-top">The stack, from the top<a class="headerlink" href="#the-stack-from-the-top" title="Permanent link">&para;</a></h2>
+<p><img alt="the layers of the stack from a model description down to gates, with the chapters that build each layer" src="../assets/fig/intro-stack.svg" />
+<em>Figure I.1: the book builds every layer, and tests each one against the layer's own independent check.</em></p>
+<p>Read the figure from the top: you write a model; <strong>Capra</strong> turns it into <strong>GA-2 instructions</strong>; the <strong>sequencer</strong> runs them on the chip's <strong>units</strong>; the units are <strong>Verilog</strong>; and synthesis turns the Verilog into <strong>gates</strong>. The book goes through the stack in the order a chip team would, <em>bottom-up for the hardware</em> (circuits, then the chip, then gates) and then <em>top-down for the compiler</em> once there is something to compile for.</p>
+<p><strong>The names.</strong> <em>GA-2</em> is the accelerator (the second generation: <em>GA-1</em> was a cycle-counting software model in a companion book). <em>Capra</em> is the compiler, named for the genus of wild goats and ibexes, animals that find a route up a cliff, which is a fair description of what a compiler does with a graph and a small memory. The pictures at the top of each page show a few species of <em>Capra</em> in imaginary places, for fun.</p>
+<h2 id="one-thread-through-the-book-a-tokens-journey">One thread through the book: a token's journey<a class="headerlink" href="#one-thread-through-the-book-a-tokens-journey" title="Permanent link">&para;</a></h2>
+<p>To keep the chapters from feeling like separate topics, follow a single generated token.</p>
+<p><img alt="the eight steps of one decode step, each labelled with the chapter that builds it" src="../assets/fig/intro-token.svg" />
+<em>Figure I.2: the book in a single decode step. Each box is an instruction of a program Capra writes, and each is the subject of a chapter.</em></p>
+<p>The host looks up the token's embedding (the chip has no gather instruction). The DMA brings weights into the scratchpad (Chapter 5). The matrix unit multiplies int8 matrices into int32 sums (Chapters 2 to 4); the requantizer brings them back to int8 (Chapter 3). The new key and value are appended to the KV cache (Chapter 8). The softmax unit turns scores into weights (Chapter 6); another product forms the weighted sum, and the feed-forward block follows. Finally an <code>AMAX</code> instruction picks the next token (Chapter 7), which is fed back in. The whole thing is a program written by the compiler (Chapter 11), run by the sequencer (Chapter 7), on Verilog that synthesizes to gates (Chapter 10), at a speed set by memory traffic (Chapter 9). Chapter 12 does exactly this for 24 tokens.</p>
+<h2 id="the-roadmap">The roadmap<a class="headerlink" href="#the-roadmap" title="Permanent link">&para;</a></h2>
+<p><img alt="six parts: foundations, the compute engine, the whole chip, Verilog to gates, compilation, case studies, with their chapters" src="../assets/fig/intro-roadmap.svg" />
+<em>Figure I.3: the six parts. Each ends with something that runs.</em></p>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Chapters</th>
+<th>The question it answers</th>
+<th>What runs at the end</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Foundations</strong></td>
+<td>1 The flow; 2 MAC and number formats; 3 Quantization</td>
+<td>How do we build and test a circuit? How are numbers stored, and what does 8 bits cost?</td>
+<td>an adder and a counter through the full loop; an int8 MAC; the requantizer</td>
+</tr>
+<tr>
+<td><strong>2. The Compute Engine</strong></td>
+<td>4 Systolic array; 5 Scratchpad, DMA, double buffering; 6 Vector unit and softmax</td>
+<td>How do many MACs work at once without fetching data twice? How is memory latency hidden? How does an integer chip do an exponential and a division?</td>
+<td>a systolic array; a streaming memory system; a softmax unit</td>
+</tr>
+<tr>
+<td><strong>3. The Whole Chip</strong></td>
+<td>7 GA-2; 8 Attention and the KV cache; 9 Batching and bandwidth</td>
+<td>What is the machine, as a programmer sees it? What does a language model compute per token? Why is decoding slow and what helps?</td>
+<td>a chip that runs programs; an attention step; a batched decoder and a roofline</td>
+</tr>
+<tr>
+<td><strong>4. Verilog to Gates</strong></td>
+<td>10 Synthesis, timing and gate-level verification</td>
+<td>Can it be built, how fast, and are we sure the netlist still works?</td>
+<td>a 31,580-cell netlist passing the same programs</td>
+</tr>
+<tr>
+<td><strong>5. Compilation</strong></td>
+<td>11 Capra; 12 Capstone</td>
+<td>Can a program write the programs? Does the whole stack work together?</td>
+<td>a tiny transformer decoding 24 tokens on the chip</td>
+</tr>
+<tr>
+<td><strong>6. Case Studies</strong> <em>(in progress)</em></td>
+<td>13 to 17</td>
+<td>How do the techniques of industrial inference (int4 weights, grouped-query attention, paged KV cache, speculative decoding, mixture of experts) fit this stack?</td>
+<td>each technique built and tested on the same chip and compiler</td>
+</tr>
+</tbody>
+</table>
+<p>Outside the parts: <strong>Getting Started</strong> (install and verify the tools), <strong>Background</strong> (what Verilog is and what each tool does), the <strong>Appendices</strong> (primers; <em>in progress</em>), and the <strong>Answers</strong> to every chapter's self-check questions.</p>
+<h2 id="the-method-five-rules-and-the-evidence">The method: five rules, and the evidence<a class="headerlink" href="#the-method-five-rules-and-the-evidence" title="Permanent link">&para;</a></h2>
+<p>The book is held together by five rules, stated here once and applied on every page.</p>
+<ol>
+<li><strong>Every circuit has an independent golden model in Python</strong> that shares no code with the Verilog.</li>
+<li><strong>Every testbench is self-checking</strong> (PASS or FAIL, exit status 0 or 1) and runs in <strong>two simulators</strong> that share no code.</li>
+<li><strong>Every test is tested by mutation:</strong> the design is broken one line at a time, and a test that does not notice has a gap, which the book reports. A mutant that changes nothing observable (an <em>equivalent</em> mutant) is reported too and is not counted as a miss.</li>
+<li><strong>Every number is labelled</strong> <em>measured</em>, <em>derived</em> or <em>assumed</em>.</li>
+<li><strong>Say what the result does not show.</strong></li>
+</ol>
+<p><img alt="bar chart of mutants caught per chapter: 10, 19, 15, 16, 20, 27, 49, 23, 16, 27 for chapters 1 to 9 and 11" src="../assets/fig/intro-evidence.svg" />
+<em>Figure I.4 (counted from the chapters' mutation tables): the number of deliberately broken versions of each chapter's design that its tests catch. Chapter 10's flow and Chapter 12's capstone are discussed separately: the capstone catches only 38 to 39 of Chapter 7's 49 hardware mutants, which is itself one of the book's findings.</em></p>
+<p>The same discipline is where the book's <em>findings</em> come from, not only its assurance. A few examples, each a result a reader can reproduce:</p>
+<table>
+<thead>
+<tr>
+<th>Chapter</th>
+<th>A finding that testing produced</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2</td>
+<td>The first MAC tests passed while three bugs (a too-short overflow run, no post-reset check, a mutant that was not one) were hiding in the suite</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Three of the array's 16 mutants appear only on the <em>second</em> matrix product after reset</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Two controller bugs are visible only in the load-bound or only in the compute-bound test shape</td>
+</tr>
+<tr>
+<td>7</td>
+<td>A random-program generator produced programs whose behaviour is undefined by the ISA; the simulator and the chip legitimately differed</td>
+</tr>
+<tr>
+<td>8</td>
+<td>No single check catches all 23 builder mutants: the exact reference misses every scale error</td>
+</tr>
+<tr>
+<td>10</td>
+<td>The netlist fails in a four-state simulator from unreset flip-flops although it is correct (X-pessimism); and a first pipelining attempt gains only 11%</td>
+</tr>
+<tr>
+<td>11</td>
+<td>A scale-sharing flaw in <code>add</code>, a placement bug, and a blind spot (cancellation) that needed a directed test</td>
+</tr>
+<tr>
+<td>12</td>
+<td>A realistic workload catches only 38 of the 49 hardware mutants the purpose-built suite catches</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-to-read-it">How to read it<a class="headerlink" href="#how-to-read-it" title="Permanent link">&para;</a></h2>
+<p>Every chapter has the same shape: <em>why this chapter</em>, the concepts built up with a hand-worked example, the code with commentary, <strong>two running examples</strong> with their scripts and real outputs, a <strong>common mistakes</strong> section, what the chapter does and does not establish, a summary, <strong>self-check questions</strong> (with worked answers at the end of the book), and <strong>exercises</strong>. Figures are drawn from real data wherever a chart appears.</p>
+<p>Three reading paths:</p>
+<ul>
+<li><strong>The fast path (ML or software reader):</strong> Getting Started, Background, then Chapters 1, 3, 7, 8, 9, 11 and 12. This gives the story: numbers, the machine, attention, the memory limit, the compiler, the capstone.</li>
+<li><strong>The hardware path:</strong> Getting Started, Background, then Chapters 1 to 7 and 10 in order. This is the discipline of building and checking a chip.</li>
+<li><strong>The complete path:</strong> everything in order, then the Case Studies. The chapters build on each other, and the later ones assume the earlier ones.</li>
+</ul>
+<p>You do not need to type anything to read. If you want to run the examples, every command is on the Getting Started page and every chapter says how to run its scripts and how long they take.</p>
+<h2 id="companion-books-and-where-this-one-stops">Companion books, and where this one stops<a class="headerlink" href="#companion-books-and-where-this-one-stops" title="Permanent link">&para;</a></h2>
+<p><em>Capra</em> is a companion to <em>Unix OS from Scratch</em> (a bare-metal kernel) and <em>IR Forge: A Compiler from Scratch</em>; Chapters 40 to 43 of the compiler book built GA-1, a software model of a matrix accelerator. This book turns that model into a hardware description and builds a compiler for it.</p>
+<p>It stops where a real project would start the <em>next</em> phase: place and route with a real open process kit, a memory system with real DRAM timing, floating-point and training support, and a complete operation set. Chapter 12 lists these as the natural next steps.</p>
+<h2 id="what-to-do-next">What to do next<a class="headerlink" href="#what-to-do-next" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Install the tools and verify them:</strong> the <a href="../getting-started/">Getting Started</a> page takes about ten minutes.</li>
+<li><strong>Meet Verilog and the tools:</strong> the <a href="../background/">Background</a> page describes the language and each program.</li>
+<li><strong>Start Chapter 1:</strong> the whole loop on a 4-bit adder.</li>
+</ol>
+<p><em>Under development.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Oluwaseyi Awoga
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "search.suggest", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
