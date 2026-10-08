@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../part16/16-speculative-decoding/">
+        <link rel="prev" href="../part17/17-mixture-of-experts/">
       
       
       
@@ -1142,6 +1142,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part17/17-mixture-of-experts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. Mixture-of-Experts Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1447,6 +1475,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chapter-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 17
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-17-hints-for-the-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 17 -- hints for the exercises
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#chapter-1-additional-questions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1738,6 +1788,28 @@
     <span class="md-ellipsis">
       
         Chapter 16 -- hints for the exercises
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 17
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-17-hints-for-the-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 17 -- hints for the exercises
       
     </span>
   </a>
@@ -2122,6 +2194,32 @@
 <li>With two alternatives for the first guess the verifier needs the rows of both chains; each row sees the cache, the shared prefix and only its own chain, which is a list of row ranges, not a prefix. Capra's <code>slice_rows</code> gives contiguous ranges only; you would concatenate the visible pieces, which costs copies.</li>
 <li>Accept with probability <code>min(1, p_target(x) / p_draft(x))</code>; on rejection sample from <code>max(0, p_target - p_draft)</code> normalized. This keeps the distribution of the output equal to the target's.</li>
 <li>Try making the draft's argmax tie-break differently (lowest index versus highest): the output cannot change, so the tests cannot catch it; it is an equivalent mutant for exactness and a quality difference for the acceptance rate.</li>
+</ol>
+<hr />
+<h2 id="chapter-17">Chapter 17<a class="headerlink" href="#chapter-17" title="Permanent link">&para;</a></h2>
+<p><strong>1. Why two programs, and what does the host do between them?</strong></p>
+<p>Worked answer: the chip executes a fixed instruction sequence; it has no branch, so a program cannot choose which expert's weights to use depending on a value it computed. Program A computes the router's choice and writes it out (with <code>h</code>). The host reads the choice, picks the compiled program of that expert and starts it with <code>h</code> as input.</p>
+<p><strong>2. Why does a wrong expert give the input token?</strong></p>
+<p>Worked answer: each expert has hidden units that fire only for the four tokens of its own group. A token of another group fires none of them, so the expert outputs about zero, <code>y = h</code> stays equal to the token's own embedding, and the output matrix (which reads embeddings) gives the highest logit to the token that was just given.</p>
+<p><strong>3. Why do all the B programs cost the same?</strong></p>
+<p>Worked answer: cycle counts depend on the shapes of the matrices and the instruction sequence, which are identical for the four experts (same sizes, same instructions); only the weight values differ. A difference would need different expert sizes, a different number of rows, or different instruction sequences.</p>
+<p><strong>4. Distinct experts for B = 4, E = 8.</strong></p>
+<p>Worked answer: 8 * (1 - (7/8)^4) = 8 * (1 - 0.586) = 3.31.</p>
+<p><strong>5. Why not 50%?</strong></p>
+<p>Worked answer: eight separate programs each pay the fixed cost of a program (loading the weights, the output matrix and the fetch and halt); four grouped programs pay it four times, plus the cost of the additional rows. The grouped cost is 4 fixed + 8 rows' worth of arithmetic, so it is more than half of 8 fixed + 8 rows' worth.</p>
+<p><strong>6. Why is a flipped route a bigger error than a flipped rounding?</strong></p>
+<p>Worked answer: a rounding error changes a logit by a fraction of a step. A flipped route replaces the whole function that processes the token (a different expert with different weights), so the output can change completely; on the structured model it changes the predicted token for sure.</p>
+<p><strong>7. Why is top-1 without a gate acceptable here but not for training?</strong></p>
+<p>Worked answer: here nothing is trained and the decision is what matters. In training, the gate (the router's probability multiplying the expert's output) is the path by which the loss sends a gradient to the router; without it the router would get no learning signal.</p>
+<p><strong>8. Why did the output tests miss the wrong memory image?</strong></p>
+<p>Worked answer: the outputs come from running the reference simulator with the correct <code>h</code>; the record kept for the RTL replay is built separately, and a replay of a self-consistent but wrong image passes (the RTL agrees with the reference run on the wrong data). Only a check that compares the image with the <code>h</code> that program A produced sees the difference.</p>
+<h2 id="chapter-17-hints-for-the-exercises">Chapter 17 -- hints for the exercises<a class="headerlink" href="#chapter-17-hints-for-the-exercises" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Take the two best router scores; run B for both experts and add their <code>h</code>-relative outputs on the host (or build a B with two experts); expect about 2x the expert-stage cost.</li>
+<li>Multiply <code>Wr</code> by 0.2: the winner's score falls to about 0.4 and the others to about 0.1, close to the int8 step; look for flips at the 0.2-0.1 range.</li>
+<li>Count, per expert, tokens beyond the second; those are dropped (the residual passes through unchanged).</li>
+<li>For <code>E = 8</code> each expert has two tokens; the touched-experts formula is <code>8 (1 - (7/8)^B)</code>.</li>
+<li>Calibrate with a start set that never reaches one expert so that the fallback runs; check whether the program still compiles and follows the rule.</li>
 </ol>
 <hr />
 <h2 id="chapter-1-additional-questions">Chapter 1 (additional questions)<a class="headerlink" href="#chapter-1-additional-questions" title="Permanent link">&para;</a></h2>
