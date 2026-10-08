@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../part15/15-paged-cache-and-window/">
+        <link rel="prev" href="../part16/16-speculative-decoding/">
       
       
       
@@ -1114,6 +1114,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part16/16-speculative-decoding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. Speculative Decoding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1397,6 +1425,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chapter-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 16
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-16-hints-for-the-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 16 -- hints for the exercises
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#chapter-1-additional-questions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1666,6 +1716,28 @@
     <span class="md-ellipsis">
       
         Chapter 15 -- hints for the exercises
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 16
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-16-hints-for-the-exercises" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 16 -- hints for the exercises
       
     </span>
   </a>
@@ -2024,6 +2096,32 @@
 <li>Gather rows <code>[0, 1] + [L - W + 2 ... L - 2]</code>; the context is still <code>W</code> rows so no new program is needed.</li>
 <li>Pad with dummy rows up to the next multiple of the page size before forking; account for the padding as waste.</li>
 <li>Reverse the order of pages in <code>trim</code>: <code>rows()</code> would then read the wrong pages: the shadow comparison should catch it; if it does not, add a case.</li>
+</ol>
+<hr />
+<h2 id="chapter-16">Chapter 16<a class="headerlink" href="#chapter-16" title="Permanent link">&para;</a></h2>
+<p><strong>1. Guesses <code>[7, 2, 5]</code>, choices <code>[7, 2, 9, 4]</code>.</strong></p>
+<p>Worked answer: guess 0 (7) equals choice 0, guess 1 (2) equals choice 1, guess 2 (5) differs from choice 2 (9). Two guesses are accepted. The emitted tokens are the accepted guesses and the target's choice at the first disagreement: <code>[7, 2, 9]</code>. The cache rows kept are rows 0, 1 and 2 of the block (the rows of the last committed token and the two accepted guesses); row 3, which saw the rejected guess, is dropped.</p>
+<p><strong>2. Why the output does not depend on the draft; what a poor draft cannot break.</strong></p>
+<p>Worked answer: each emitted token is a guess the target itself chose at that position, or the target's own choice, and each was computed from a prefix of already-accepted tokens, so the sequence is the target's greedy sequence. A poor draft only reduces the number of accepted guesses per block. The argument would break if the verifier let a row see a guess that was later rejected (a non-causal block): then a row's choice would depend on a token that is not in the output.</p>
+<p><strong>3. <code>k = 4</code> and 100% acceptance; why not <code>k = 5</code>?</strong></p>
+<p>Worked answer: each block yields k + 1 = 5 tokens, so 32 tokens need 7 blocks (35 tokens, 3 are overshoot). In Example B <code>k = 5</code> yields 6 tokens per block and needs 6 blocks (36 tokens), and the verifier's cost grows with the rows, so the gain from one more guess is smaller than the loss from the overshoot and the wider verifier. <code>k = 3</code> gives 4 tokens per block: 8 blocks, exactly 32 tokens, no overshoot.</p>
+<p><strong>4. Why a view, and why no concatenation?</strong></p>
+<p>Worked answer: a slice of rows is a contiguous range of the source's buffer, so its address is the source's address plus an offset; nothing needs to be copied. A concatenation needs its inputs placed next to each other in one buffer; a slice lives inside its source's buffer, which fixes its place, so it cannot also be placed next to another tensor (that would require a copy, which the compiler does not do for views).</p>
+<p><strong>5. Expected tokens for <code>k = 2</code>.</strong></p>
+<p>Worked answer: a block always yields 1 token (the target's choice at the first disagreement or after the last guess). The first guess is accepted with probability a, giving a second token; the second is accepted with probability a squared (both must be right), giving a third. By linearity of expectation E = 1 + a + a squared.</p>
+<p><strong>6. <code>a = 0.8</code>, <code>k = 4</code>, <code>c = 0.05</code>.</strong></p>
+<p>Worked answer: E = (1 - 0.8^5) / (1 - 0.8) = (1 - 0.32768) / 0.2 = 3.36. The cost of a block is 1 + 4 * 0.05 = 1.2 target steps. Speedup = 3.36 / 1.2 = 2.80.</p>
+<p><strong>7. Why a sharp-attention model for the causality test?</strong></p>
+<p>Worked answer: in the structured model the attention scores are tiny, so the attention weights are nearly uniform over the visible rows and the output barely depends on which rows are visible; a change to a later token in a non-causal block would change a row's output by less than the integer rounding. Multiplying the query and key weights by 4 makes the attention patterns peaked so that a row's output depends strongly on the rows it can see.</p>
+<p><strong>8. Why did "bonus token not appended" survive, and what caught it?</strong></p>
+<p>Worked answer: if the bonus token is dropped, the next block starts from the last accepted guess instead; the verifier recomputes the target's choice after it, which is the very token that was dropped. The output tokens are the same; only a block was wasted. The check that finally caught it is the accounting one: tokens emitted must equal accepted guesses plus the number of blocks, and the cache length must equal the tokens emitted.</p>
+<h2 id="chapter-16-hints-for-the-exercises">Chapter 16 -- hints for the exercises<a class="headerlink" href="#chapter-16-hints-for-the-exercises" title="Permanent link">&para;</a></h2>
+<ol>
+<li>A 256-entry table indexed by (previous token, token before it): <code>Wd</code> cannot represent it with one embedding, so the draft becomes a lookup done on the host; measure acceptance only, or give the draft a two-token embedding.</li>
+<li>Compute <code>E</code>, <code>t_draft</code> and <code>t_verify(k + 1)</code> for each k and take the maximum of <code>E * t_plain / (k * t_draft + t_verify)</code>; compare it with the measured grid.</li>
+<li>With two alternatives for the first guess the verifier needs the rows of both chains; each row sees the cache, the shared prefix and only its own chain, which is a list of row ranges, not a prefix. Capra's <code>slice_rows</code> gives contiguous ranges only; you would concatenate the visible pieces, which costs copies.</li>
+<li>Accept with probability <code>min(1, p_target(x) / p_draft(x))</code>; on rejection sample from <code>max(0, p_target - p_draft)</code> normalized. This keeps the distribution of the output equal to the target's.</li>
+<li>Try making the draft's argmax tie-break differently (lowest index versus highest): the output cannot change, so the tests cannot catch it; it is an equivalent mutant for exactness and a quality difference for the acceptance rate.</li>
 </ol>
 <hr />
 <h2 id="chapter-1-additional-questions">Chapter 1 (additional questions)<a class="headerlink" href="#chapter-1-additional-questions" title="Permanent link">&para;</a></h2>
